@@ -1,0 +1,40 @@
+# Source registry per 06_data_sources_and_licensing.md.
+# A source with licence_review_status other than "approved" cannot influence
+# production gold outputs (enforced in climate_risk.config.models + quality gate).
+sources:
+  owid_co2:
+    owner: "Our World in Data"
+    tier: core
+    access: https
+    refresh_check: weekly
+    licence: "CC-BY-4.0"
+    licence_review_status: approved
+    attribution_required: true
+    adapter: owid_co2_v1
+    enabled: true
+    url: "https://github.com/owid/co2-data/raw/master/owid-co2-data.csv"
+
+  world_bank_wdi:
+    owner: "World Bank"
+    tier: core
+    access: api
+    refresh_check: weekly
+    licence: "CC-BY-4.0"
+    licence_review_status: approved
+    attribution_required: true
+    adapter: world_bank_v1
+    enabled: true
+    # NY.GDP.MKTP.KD = GDP, constant local currency-free (2015 US$); SP.POP.TOTL = population.
+    url: "https://api.worldbank.org/v2/country/{country}/indicator/{indicator}?format=json&per_page=20000"
+
+  ember_global_electricity:
+    owner: "Ember"
+    tier: core
+    access: download
+    refresh_check: monthly
+    licence: null
+    licence_review_status: pending_verification
+    attribution_required: true
+    adapter: ember_v1
+    enabled: false
+    url: "https://ember-energy.org/data/yearly-electricity-data/"

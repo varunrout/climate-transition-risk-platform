@@ -1,0 +1,122 @@
+# Controlled ISO-3 country mapping for the G20 sovereign panel (Phase 1 scope).
+# The European Union is a G20 member but is an aggregate region, not a sovereign
+# country, and is deliberately excluded from this mapping per 00_overview.md /
+# 06_data_sources_and_licensing.md ("aggregates must never leak into the
+# sovereign-country ranking"). Names are controlled here rather than
+# fuzzy-matched at runtime; source_name_aliases lists every spelling seen in
+# OWID CO2 and World Bank WDI so ingestion can resolve to country_iso3 deterministically.
+countries:
+  - country_iso3: ARG
+    country_name: Argentina
+    g20_flag: true
+    region: Latin America and Caribbean
+    income_group: Upper middle income
+    source_name_aliases: ["Argentina"]
+  - country_iso3: AUS
+    country_name: Australia
+    g20_flag: true
+    region: East Asia and Pacific
+    income_group: High income
+    source_name_aliases: ["Australia"]
+  - country_iso3: BRA
+    country_name: Brazil
+    g20_flag: true
+    region: Latin America and Caribbean
+    income_group: Upper middle income
+    source_name_aliases: ["Brazil"]
+  - country_iso3: CAN
+    country_name: Canada
+    g20_flag: true
+    region: North America
+    income_group: High income
+    source_name_aliases: ["Canada"]
+  - country_iso3: CHN
+    country_name: China
+    g20_flag: true
+    region: East Asia and Pacific
+    income_group: Upper middle income
+    source_name_aliases: ["China"]
+  - country_iso3: FRA
+    country_name: France
+    g20_flag: true
+    region: Europe and Central Asia
+    income_group: High income
+    source_name_aliases: ["France"]
+  - country_iso3: DEU
+    country_name: Germany
+    g20_flag: true
+    region: Europe and Central Asia
+    income_group: High income
+    source_name_aliases: ["Germany"]
+  - country_iso3: IND
+    country_name: India
+    g20_flag: true
+    region: South Asia
+    income_group: Lower middle income
+    source_name_aliases: ["India"]
+  - country_iso3: IDN
+    country_name: Indonesia
+    g20_flag: true
+    region: East Asia and Pacific
+    income_group: Upper middle income
+    source_name_aliases: ["Indonesia"]
+  - country_iso3: ITA
+    country_name: Italy
+    g20_flag: true
+    region: Europe and Central Asia
+    income_group: High income
+    source_name_aliases: ["Italy"]
+  - country_iso3: JPN
+    country_name: Japan
+    g20_flag: true
+    region: East Asia and Pacific
+    income_group: High income
+    source_name_aliases: ["Japan"]
+  - country_iso3: MEX
+    country_name: Mexico
+    g20_flag: true
+    region: Latin America and Caribbean
+    income_group: Upper middle income
+    source_name_aliases: ["Mexico"]
+  - country_iso3: RUS
+    country_name: Russia
+    g20_flag: true
+    region: Europe and Central Asia
+    income_group: Upper middle income
+    source_name_aliases: ["Russia", "Russian Federation"]
+  - country_iso3: SAU
+    country_name: Saudi Arabia
+    g20_flag: true
+    region: Middle East and North Africa
+    income_group: High income
+    source_name_aliases: ["Saudi Arabia"]
+  - country_iso3: ZAF
+    country_name: South Africa
+    g20_flag: true
+    region: Sub-Saharan Africa
+    income_group: Upper middle income
+    source_name_aliases: ["South Africa"]
+  - country_iso3: KOR
+    country_name: South Korea
+    g20_flag: true
+    region: East Asia and Pacific
+    income_group: High income
+    source_name_aliases: ["South Korea", "Korea, Rep."]
+  - country_iso3: TUR
+    country_name: Turkey
+    g20_flag: true
+    region: Europe and Central Asia
+    income_group: Upper middle income
+    source_name_aliases: ["Turkey", "Turkiye", "Türkiye"]
+  - country_iso3: GBR
+    country_name: United Kingdom
+    g20_flag: true
+    region: Europe and Central Asia
+    income_group: High income
+    source_name_aliases: ["United Kingdom"]
+  - country_iso3: USA
+    country_name: United States
+    g20_flag: true
+    region: North America
+    income_group: High income
+    source_name_aliases: ["United States"]
