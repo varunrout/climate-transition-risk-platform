@@ -1,12 +1,10 @@
 """climate-risk CLI entrypoint.
 
 Milestone status (see README.md for the authoritative table): `ingest` (M1),
-`build-silver` (M2), `backtest` (M4) and `score` (M5) are implemented.
-`features`/`model` are library functions (climate_risk.features.decoupling,
-climate_risk.scenarios.engine) not yet wired as standalone CLI commands.
-`publish` is not yet implemented end-to-end and exits with a clear
-NotImplementedError rather than pretending to run (the publish barrier
-itself is implemented and tested). `run` chains whichever stages exist.
+`build-silver` (M2), `backtest` (M4), `score` (M5) and `publish` are
+implemented. `features`/`model` are library functions
+(climate_risk.features.decoupling, climate_risk.scenarios.engine) not yet
+wired as standalone CLI commands. `run` chains every implemented stage.
 """
 
 from __future__ import annotations
@@ -278,21 +276,142 @@ def score(
 
 
 @app.command()
-def publish() -> None:
-    """Not yet implemented end-to-end (the publish barrier itself exists and is tested)."""
-    _not_implemented("publish", milestone="M5")
+def publish(
+    lake_root: str | None = typer.Option(None, help="Override the local lake root."),
+) -> None:
+    """Fail-closed publish: promote the current gold outputs to latest_successful_run,
+    or refuse and leave the previous release untouched (climate_risk.publishing.barrier).
+
+    Requires: an accepted silver panel, backtest gold outputs, and score gold
+    outputs to already exist (run `climate-risk run` first, or ingest/build-silver/
+    backtest/score individually). Writes a full evidence manifest to
+    gold/manifests/<run_id>.json in addition to the barrier's own pointer file.
+    """
+    import glob
+    import hashlib
+    import json
+
+    from climate_risk.publishing.barrier import PublishBlockedError
+    from climate_risk.publishing.barrier import publish as publish_barrier
+    from climate_risk.scoring.risk_score import EFFECTIVE_WEIGHTS
+
+    log = get_logger(stage="publish")
+    paths = RunPaths.from_env({"CLIMATE_RISK_LAKE_ROOT": lake_root} if lake_root else {})
+    run = PipelineRun.start()
+    log = log.bind(run_id=run.run_id)
+
+    def _fail(stage: str, message: str) -> None:
+        run.fail(stage=stage, message=message)
+        log.error("publish blocked", stage=stage, message=message)
+
+    source_snapshots: dict[str, dict[str, str]] = {}
+    for source_name in ("owid_co2", "world_bank_wdi"):
+        manifest_paths = sorted(
+            glob.glob(str(paths.raw / f"source={source_name}" / "*" / "*" / "manifest.json"))
+        )
+        if not manifest_paths:
+            _fail("ingest", f"no ingestion manifest found for source={source_name}")
+            typer.echo(f"publish blocked: no ingestion manifest for {source_name}", err=True)
+            raise typer.Exit(code=1)
+        latest_manifest = json.loads(Path(manifest_paths[-1]).read_text(encoding="utf-8"))
+        if latest_manifest["status"] != "ACCEPTED":
+            _fail("ingest", f"latest {source_name} snapshot has status {latest_manifest['status']}")
+            typer.echo(f"publish blocked: {source_name} snapshot not ACCEPTED", err=True)
+            raise typer.Exit(code=1)
+        source_snapshots[source_name] = {
+            "sha256": latest_manifest["sha256"],
+            "retrieved_at_utc": latest_manifest["retrieved_at_utc"],
+        }
+
+    fact_dirs = sorted(
+        glob.glob(str(paths.silver / "fact_country_year_transition" / "snapshot_set_id=*"))
+    )
+    if not fact_dirs:
+        _fail("build-silver", "no silver panel found")
+        typer.echo("publish blocked: no silver panel found", err=True)
+        raise typer.Exit(code=1)
+    snapshot_set_id = Path(fact_dirs[-1]).name.removeprefix("snapshot_set_id=")
+    panel = pd.read_parquet(Path(fact_dirs[-1]) / "data.parquet")
+    countries = set(load_countries().keys())
+
+    from climate_risk.transforms.silver import latest_complete_common_year
+
+    eligible_year = latest_complete_common_year(panel, countries=countries)
+    completeness = (
+        float(panel[panel["year"] == eligible_year]["is_core_complete"].mean())
+        if eligible_year is not None
+        else 0.0
+    )
+
+    backtest_summary_path = paths.gold / "backtest_summary.parquet"
+    score_path = paths.gold / "country_transition_risk.parquet"
+    if not backtest_summary_path.exists():
+        _fail("backtest", "no gold/backtest_summary.parquet found")
+        typer.echo("publish blocked: no backtest output found", err=True)
+        raise typer.Exit(code=1)
+    if not score_path.exists():
+        _fail("score", "no gold/country_transition_risk.parquet found")
+        typer.echo("publish blocked: no score output found", err=True)
+        raise typer.Exit(code=1)
+
+    backtest_summary = pd.read_parquet(backtest_summary_path)
+    scores = pd.read_parquet(score_path)
+
+    run.snapshot_set_id = snapshot_set_id
+    run.feature_set_version = "decoupling_v1"
+    run.model_version = "empirical_bootstrap_v1"
+    config_source = json.dumps(
+        {"weights": dict(EFFECTIVE_WEIGHTS), "sources": sorted(source_snapshots)},
+        sort_keys=True,
+    )
+    run.config_hash = hashlib.sha256(config_source.encode()).hexdigest()[:16]
+    run.succeed(release_id=snapshot_set_id)
+
+    manifest = {
+        "run_id": run.run_id,
+        "started_at": run.started_at.isoformat(),
+        "completed_at": run.completed_at.isoformat() if run.completed_at else None,
+        "git_sha": run.git_commit,
+        "container_image_digest": None,  # populated once this runs inside a built image
+        "source_snapshot_ids": {k: v["sha256"][:16] for k, v in source_snapshots.items()},
+        "source_checksums": {k: v["sha256"] for k, v in source_snapshots.items()},
+        "config_hash": run.config_hash,
+        "random_seed": 42,
+        "country_scope": sorted(countries),
+        "quality_status": "ACCEPTED",
+        "model_variant": run.model_version,
+        "backtest_metrics": backtest_summary.to_dict(orient="records"),
+        "score_version": "v1",
+        "publish_status": "PUBLISHED",
+        "latest_model_eligible_year": eligible_year,
+        "latest_model_eligible_year_completeness": completeness,
+        "azure_job_execution_id": None,  # populated when run as an Azure Container Apps Job
+    }
+    (paths.gold / "manifests").mkdir(parents=True, exist_ok=True)
+    (paths.gold / "manifests" / f"{run.run_id}.json").write_text(
+        json.dumps(manifest, indent=2), encoding="utf-8"
+    )
+
+    try:
+        publish_barrier(run, gold_root=paths.gold)
+    except PublishBlockedError as exc:
+        typer.echo(f"publish blocked: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    log.info("published", release_id=snapshot_set_id, countries=len(scores))
+    typer.echo(f"published release_id={snapshot_set_id} ({len(scores)} countries scored)")
 
 
 @app.command()
 def run() -> None:
-    """Run every implemented stage in order. Currently: ingest, build-silver, backtest, score."""
+    """Run every implemented stage in order: ingest, build-silver, backtest, score, publish."""
     ingest(source=None, lake_root=None)
     build_silver(lake_root=None)
     backtest(lake_root=None, n_simulations=10_000, random_seed=42)
     score(lake_root=None, target_year=2050, random_seed=42)
+    publish(lake_root=None)
     typer.echo(
-        "Stage publish is not yet implemented; run stopped after score. "
-        "See README.md milestone table.",
+        "All implemented stages complete.",
         err=True,
     )
 
