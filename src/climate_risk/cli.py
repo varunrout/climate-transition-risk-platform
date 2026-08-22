@@ -1,7 +1,9 @@
 """climate-risk CLI entrypoint.
 
-Milestone status (see README.md for the authoritative table): `ingest` (M1)
-and `build-silver` (M2) are implemented. `features`, `model`, `backtest`,
+Milestone status (see README.md for the authoritative table): `ingest` (M1),
+`build-silver` (M2) and `backtest` (M4) are implemented. `features`/`model`
+are library functions (climate_risk.features.decoupling,
+climate_risk.scenarios.engine) not yet wired as standalone CLI commands.
 `score`, `publish` are not yet implemented and exit with a clear
 NotImplementedError rather than pretending to run. `run` chains whichever
 stages exist.
@@ -10,7 +12,9 @@ stages exist.
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 
+import pandas as pd
 import structlog
 import typer
 
@@ -157,9 +161,44 @@ def model() -> None:
 
 
 @app.command()
-def backtest() -> None:
-    """Not yet implemented (M4)."""
-    _not_implemented("backtest", milestone="M4")
+def backtest(
+    lake_root: str | None = typer.Option(None, help="Override the local lake root."),
+    n_simulations: int = typer.Option(10_000, help="Bootstrap simulation count per split."),
+    random_seed: int = typer.Option(42, help="Seed for reproducibility."),
+) -> None:
+    """Run rolling-origin backtests over the latest silver panel and write gold/backtest_summary.parquet."""
+    import glob
+
+    from climate_risk.backtesting.rolling_origin import run_backtest, summarise_metrics
+
+    log = get_logger(stage="backtest")
+    paths = RunPaths.from_env({"CLIMATE_RISK_LAKE_ROOT": lake_root} if lake_root else {})
+
+    fact_dirs = sorted(
+        glob.glob(str(paths.silver / "fact_country_year_transition" / "snapshot_set_id=*"))
+    )
+    if not fact_dirs:
+        typer.echo("no silver panel found; run `climate-risk build-silver` first", err=True)
+        raise typer.Exit(code=1)
+    panel = pd.read_parquet(Path(fact_dirs[-1]) / "data.parquet")
+
+    origins = [(2010, 2015), (2012, 2017), (2014, 2019), (2015, 2020), (2016, 2021), (2017, 2022)]
+    results = run_backtest(
+        panel, origins=origins, n_simulations=n_simulations, random_seed=random_seed
+    )
+    if results.empty:
+        typer.echo(
+            "no eligible backtest splits (insufficient history or missing targets)", err=True
+        )
+        raise typer.Exit(code=1)
+
+    summary = summarise_metrics(results)
+    paths.gold.mkdir(parents=True, exist_ok=True)
+    results.to_parquet(paths.gold / "backtest_country_origin.parquet", index=False)
+    summary.to_parquet(paths.gold / "backtest_summary.parquet", index=False)
+
+    log.info("backtest complete", n_splits=len(results), origins=origins)
+    typer.echo(summary.to_string(index=False))
 
 
 @app.command()
@@ -176,12 +215,13 @@ def publish() -> None:
 
 @app.command()
 def run() -> None:
-    """Run every implemented stage in order. Currently: ingest, build-silver."""
+    """Run every implemented stage in order. Currently: ingest, build-silver, backtest."""
     ingest(source=None, lake_root=None)
     build_silver(lake_root=None)
+    backtest(lake_root=None, n_simulations=10_000, random_seed=42)
     typer.echo(
-        "Stages features/model/backtest/score/publish are not yet implemented; "
-        "run stopped after build-silver. See README.md milestone table.",
+        "Stages score/publish are not yet implemented; run stopped after backtest. "
+        "See README.md milestone table.",
         err=True,
     )
 
