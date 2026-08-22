@@ -1009,6 +1009,29 @@ def build_bi(
 
 
 @app.command()
+def export_bi_preview(
+    output_path: str = typer.Option(
+        "docs/powerbi/portfolio_preview.html",
+        help="HTML output path for the static BI portfolio preview.",
+    ),
+) -> None:
+    """Export a static portfolio preview from gold/bi tables.
+
+    This is not a PBIX. It is a lightweight, reproducible report artifact for
+    environments where Power BI Desktop is unavailable.
+    """
+    from pathlib import Path
+
+    from climate_risk.bi.static_report import render_portfolio_preview
+
+    log = get_logger(stage="export-bi-preview")
+    lake = prepare_lake_from_env(log)
+    written = render_portfolio_preview(lake, Path(output_path))
+    log.info("Power BI portfolio preview written", output_path=str(written))
+    typer.echo(f"Power BI portfolio preview written to {written}")
+
+
+@app.command()
 def backtest(
     n_simulations: int = typer.Option(10_000, help="Bootstrap simulation count per split."),
     random_seed: int = typer.Option(42, help="Seed for reproducibility."),

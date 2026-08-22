@@ -54,5 +54,5 @@ Code/data layer: complete.
 
 Desktop visual assembly: pending.
 
-Full M9 product completion requires a usable report artifact, such as a PBIX,
-PDF export, or accepted static portfolio render.
+A static portfolio render is available at `docs/powerbi/portfolio_preview.html`.
+A native PBIX still requires Power BI Desktop assembly.
