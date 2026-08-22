@@ -909,6 +909,80 @@ def m7_phase3(
 
 
 @app.command()
+def m7_phase4(
+    n_simulations: int = typer.Option(
+        5_000, help="Simulation count for each hardened recency-bootstrap candidate."
+    ),
+    random_seed: int = typer.Option(42, help="Deterministic seed for stochastic scenarios."),
+) -> None:
+    """M7 phase 4: recency scenario hardening and final M7 decision.
+
+    Research-only unless the decision artifact later justifies an explicit
+    production promotion. This command writes under gold/research/m7/phase4/
+    and does not alter scores, production scenarios, Azure resources, or the
+    scheduled pipeline.
+    """
+    from climate_risk.research.m7_phase4 import run_phase4_hardening
+
+    log = get_logger(stage="m7-phase4")
+    lake = prepare_lake_from_env(log)
+
+    found = _latest_silver_panel(lake)
+    if found is None:
+        typer.echo("no silver panel found; run climate-risk build-silver first", err=True)
+        raise typer.Exit(code=1)
+    panel, transition_path = found
+    countries = sorted(load_countries().keys())
+
+    artifacts = run_phase4_hardening(
+        panel,
+        countries=countries,
+        n_simulations=n_simulations,
+        random_seed=random_seed,
+    )
+    candidate_comparison = artifacts["candidate_comparison"]
+    country_results = artifacts["country_results"]
+    origin_results = artifacts["origin_results"]
+    calibration_analysis = artifacts["calibration_analysis"]
+    recency_robustness = artifacts["recency_robustness"]
+    nested_weight_selection = artifacts["nested_weight_selection"]
+    performance_uncertainty = artifacts["performance_uncertainty"]
+    decision_raw = artifacts["decision"]
+    assert isinstance(candidate_comparison, pd.DataFrame)
+    assert isinstance(country_results, pd.DataFrame)
+    assert isinstance(origin_results, pd.DataFrame)
+    assert isinstance(calibration_analysis, pd.DataFrame)
+    assert isinstance(recency_robustness, pd.DataFrame)
+    assert isinstance(nested_weight_selection, pd.DataFrame)
+    assert isinstance(performance_uncertainty, pd.DataFrame)
+    assert isinstance(decision_raw, dict)
+
+    prefix = "research/m7/phase4"
+    write_parquet(lake.gold, f"{prefix}/candidate_comparison.parquet", candidate_comparison)
+    write_parquet(lake.gold, f"{prefix}/country_results.parquet", country_results)
+    write_parquet(lake.gold, f"{prefix}/origin_results.parquet", origin_results)
+    write_parquet(lake.gold, f"{prefix}/calibration_analysis.parquet", calibration_analysis)
+    write_parquet(lake.gold, f"{prefix}/recency_robustness.parquet", recency_robustness)
+    write_parquet(lake.gold, f"{prefix}/nested_weight_selection.parquet", nested_weight_selection)
+    write_parquet(lake.gold, f"{prefix}/performance_uncertainty.parquet", performance_uncertainty)
+    decision = dict(decision_raw)
+    decision["inputs"] = {
+        "transition_silver_path": transition_path,
+        "transition_rows": len(panel),
+        "n_simulations": n_simulations,
+        "random_seed": random_seed,
+    }
+    write_json(lake.gold, f"{prefix}/decision.json", decision)
+
+    log.info(
+        "M7 phase 4 recency hardening complete",
+        decision=decision.get("production_decision"),
+        m7_status=decision.get("m7_status"),
+    )
+    typer.echo(f"M7 phase 4 decision: {decision.get('production_decision')}")
+
+
+@app.command()
 def backtest(
     n_simulations: int = typer.Option(10_000, help="Bootstrap simulation count per split."),
     random_seed: int = typer.Option(42, help="Seed for reproducibility."),
