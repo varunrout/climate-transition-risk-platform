@@ -685,6 +685,95 @@ def m6_harden(
 
 
 @app.command()
+def m7_phase1(
+    bootstrap_iterations: int = typer.Option(
+        100, help="Residual-bootstrap iterations for breakpoint stability diagnostics."
+    ),
+    random_seed: int = typer.Option(42, help="Deterministic seed for stochastic diagnostics."),
+    max_bootstrap_profiles: int = typer.Option(
+        12, help="Maximum country-series profiles included in Phase 1 bootstrap stability."
+    ),
+) -> None:
+    """M7 phase 1: leakage-safe structural-break / regime diagnostics.
+
+    Research-only -- writes evidence under gold/research/m7/ and does not
+    alter score artifacts, publish manifests, Azure infrastructure, or the
+    scheduled production pipeline.
+    """
+    from climate_risk.research.m7_regimes import run_phase1_diagnostics
+
+    log = get_logger(stage="m7-phase1")
+    lake = prepare_lake_from_env(log)
+
+    transition_found = _latest_silver_panel(lake)
+    energy_found = _latest_silver_energy_panel(lake)
+    if transition_found is None or energy_found is None:
+        typer.echo(
+            "requires both fact_country_year_transition and fact_country_year_energy; "
+            "run `climate-risk ingest` and `climate-risk build-silver` first",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    transition_panel, transition_path = transition_found
+    energy_panel, energy_path = energy_found
+
+    artifacts = run_phase1_diagnostics(
+        transition_panel,
+        energy_panel,
+        random_seed=random_seed,
+        bootstrap_iterations=bootstrap_iterations,
+        max_bootstrap_profiles=max_bootstrap_profiles,
+    )
+    candidate_series = artifacts["candidate_series"]
+    feature_catalog = artifacts["feature_catalog"]
+    country_breaks = artifacts["country_breaks"]
+    method_comparison = artifacts["method_comparison"]
+    method_agreement = artifacts["method_agreement"]
+    regime_profiles = artifacts["regime_profiles"]
+    break_stability = artifacts["break_stability"]
+    case_studies = artifacts["country_case_studies"]
+    decision_raw = artifacts["decision"]
+    assert isinstance(candidate_series, pd.DataFrame)
+    assert isinstance(feature_catalog, pd.DataFrame)
+    assert isinstance(country_breaks, pd.DataFrame)
+    assert isinstance(method_comparison, pd.DataFrame)
+    assert isinstance(method_agreement, pd.DataFrame)
+    assert isinstance(regime_profiles, pd.DataFrame)
+    assert isinstance(break_stability, pd.DataFrame)
+    assert isinstance(case_studies, dict)
+    assert isinstance(decision_raw, dict)
+
+    prefix = "research/m7"
+    write_parquet(lake.gold, f"{prefix}/candidate_series.parquet", candidate_series)
+    write_parquet(lake.gold, f"{prefix}/feature_catalog.parquet", feature_catalog)
+    write_parquet(lake.gold, f"{prefix}/country_breaks.parquet", country_breaks)
+    write_parquet(lake.gold, f"{prefix}/method_comparison.parquet", method_comparison)
+    write_parquet(lake.gold, f"{prefix}/method_agreement.parquet", method_agreement)
+    write_parquet(lake.gold, f"{prefix}/regime_profiles.parquet", regime_profiles)
+    write_parquet(lake.gold, f"{prefix}/break_stability.parquet", break_stability)
+    write_json(lake.gold, f"{prefix}/country_case_studies.json", case_studies)
+
+    decision = dict(decision_raw)
+    decision["inputs"] = {
+        "transition_silver_path": transition_path,
+        "energy_silver_path": energy_path,
+        "transition_rows": len(transition_panel),
+        "energy_rows": len(energy_panel),
+    }
+    write_json(lake.gold, f"{prefix}/decision.json", decision)
+
+    log.info(
+        "M7 phase 1 diagnostics complete",
+        candidate_series=int(country_breaks["series_name"].nunique()) if len(country_breaks) else 0,
+        break_rows=len(country_breaks),
+        bootstrap_iterations=bootstrap_iterations,
+        random_seed=random_seed,
+        max_bootstrap_profiles=max_bootstrap_profiles,
+    )
+    typer.echo("M7 phase 1 artifacts written under gold/research/m7/")
+
+
+@app.command()
 def backtest(
     n_simulations: int = typer.Option(10_000, help="Bootstrap simulation count per split."),
     random_seed: int = typer.Option(42, help="Seed for reproducibility."),

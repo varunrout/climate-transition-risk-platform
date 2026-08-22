@@ -21,7 +21,7 @@ there is not claimed here until it is implemented, tested, and committed.
 | M4 | Rolling-origin backtesting harness | **Implemented** |
 | M5 | Transition risk scoring v1 (4 of 5 components), rank stability | **Implemented** |
 | M6 | Energy-system transition features | **COMPLETE - production-verified in Azure.** Phase 1 (ADR 0007): OWID `energy-data` verified and ingested. Phase 2 (ADR 0008): pre-registered gate ACCEPTed the energy component (`p <= 0.10`, positive MAE improvement, weight robustness). Phase 3 (ADR 0009): 2000-permutation hardening, redundancy-reduced 2-signal spec frozen as `energy_component_v2.1`, `score_version=v2_energy`. `cli.score()` computes **both v1 and v2**; `cli.publish()` **requires both** and declares v2 active while preserving v1 as a comparison artifact. ADR 0010 records the failed `7f11e31` Azure promotion, the proven local-storage fallback root cause, the preventive invariant, the corrected `95b7fa4` image, external Entra-authenticated ADLS verification, manifest/pointer consistency, and local/Azure parity. |
-| M7 | Regime/structural-break research | Not implemented |
+| M7 | Regime/structural-break research | **Phase 1 implemented** (research-only). `climate-risk m7-phase1` writes leakage-safe structural-break diagnostics under `gold/research/m7/`; no production score, scenario engine, Azure schedule, or publish contract change. See ADR 0011 and `docs/m7_phase1_report.md`. |
 | M8 | Azure runtime | **COMPLETE - production-verified.** Terraform-managed resources live in `rg-climate-risk-dev` (uksouth): ADLS Gen2, four filesystems, Container Apps Environment + Job, two managed identities, RBAC, Log Analytics, lifecycle policy, and budget. Real Container Apps Job executions have succeeded end to end against live ADLS Gen2, including the M6 v2 production run `job-climate-risk-dev-pipeline-xsjvjwd`, with output identical to the local baseline and real Git/image provenance in the manifest. Weekly schedule: Monday 03:00 UTC. See `docs/finops.md`, ADR 0003-0010. |
 | M9 | Power BI semantic layer | Not implemented |
 | M10 | Read-only FastAPI serving layer | Not implemented |
@@ -61,7 +61,8 @@ uv run climate-risk m6-evaluate     # M6 phase 2 research (ADR 0008): coverage/s
                                      # incremental-information/backtest/score-v2 gate
 uv run climate-risk m6-harden       # M6 phase 3 research (ADR 0009): strengthened permutation test,
                                      # redundancy-reduced component alternatives, lookback/origin robustness
-uv run pytest                       # 178 tests
+uv run climate-risk m7-phase1       # M7 phase 1 research (ADR 0011): leakage-safe structural-break diagnostics
+uv run pytest                       # 191 tests
 uv run ruff check .
 uv run mypy src
 ```
