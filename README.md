@@ -20,7 +20,7 @@ there is not claimed here until it is implemented, tested, and committed.
 | M3 | Decoupling analytics, deterministic + bootstrap scenario engine | **Implemented** (library only; not yet CLI-wired) |
 | M4 | Rolling-origin backtesting harness | **Implemented** |
 | M5 | Transition risk scoring v1 (4 of 5 components), rank stability | **Implemented** |
-| M6 | Energy-system transition features | **Partially implemented.** Source feasibility research done first (`docs/m6_source_feasibility.md`): OWID `energy-data` verified (licence, live access, full 1985–2024/25 coverage for all 19 countries) and ingested; Ember (direct), World Bank WDI energy indicators and IEA excluded/deferred with documented reasons. Raw electricity-mix silver table (`fact_country_year_energy`) and a diagnostic derived-features artifact (`gold/energy_transition_features.parquet`, `climate-risk energy-features`) are implemented and running against live data. **Not yet done, by design:** the risk-score gating steps (coverage/collinearity/incremental-information/backtest) — these features are not wired into `scoring/risk_score.py`, `weight_coverage` is still `0.8`, and no score version change has been made. |
+| M6 | Energy-system transition features | **Phases 1+2 implemented; production score unchanged.** Phase 1 (`docs/m6_source_feasibility.md`, ADR 0007): OWID `energy-data` verified and ingested; Ember/WDI-energy/IEA excluded/deferred with documented reasons. Phase 2 (`climate-risk m6-evaluate`, ADR 0008): a pre-registered evidence gate (coverage, stability, redundancy/VIF, leave-one-country-out incremental-information test with a 200-permutation null distribution, temporal backtest, weight robustness) evaluated a compact 3-signal energy component and **decided ACCEPT** (10.2% out-of-sample MAE improvement, permutation p=0.045, weight-robust). An experimental `score_v2_energy_experimental` (`climate_risk.scoring.risk_score_v2_energy`) exists side-by-side with v1 in `gold/research/m6/score_v2_energy_experimental.parquet`. **`cli.score()`/`cli.publish()` and the deployed Azure job are unchanged and still compute only v1** — promoting v2 to production is a distinct, not-yet-taken decision. |
 | M7 | Regime/structural-break research | Not implemented |
 | M8 | Azure runtime | **COMPLETE — production-verified.** 16 Terraform-managed resources (6 top-level Azure service resources plus their sub-resources: filesystems, role assignments, lifecycle policy, budget notifications) live in `rg-climate-risk-dev` (uksouth). Three real Container Apps Job executions have succeeded end to end against live ADLS Gen2, producing output identical to the local baseline and, since ADR 0006, a real `git_sha` in every published manifest. Weekly schedule: Monday 03:00 UTC. See `docs/finops.md`, ADR 0003–0006. |
 | M9 | Power BI semantic layer | Not implemented |
@@ -55,9 +55,11 @@ uv run climate-risk ingest          # fetches real OWID CO2 + energy-mix + World
 uv run climate-risk build-silver    # joins into the country-year panel + raw energy-mix table
 uv run climate-risk energy-features # diagnostic energy-transition features (M6, not score-wired)
 uv run climate-risk backtest        # rolling-origin evaluation, 6 origins
-uv run climate-risk score           # transition risk scoring v1 (unaffected by M6 so far)
+uv run climate-risk score           # transition risk scoring v1 (unaffected by M6)
 uv run climate-risk run             # chains all of the above
-uv run pytest                       # 99 tests
+uv run climate-risk m6-evaluate     # M6 phase 2 research: coverage/stability/redundancy/
+                                     # incremental-information/backtest/score-v2 gate (ADR 0008)
+uv run pytest                       # 140 tests
 uv run ruff check .
 uv run mypy src
 ```
@@ -91,7 +93,23 @@ unresolved undercoverage finding — not tuned away.
 weight-perturbation rank-stability analysis, and writes
 `gold/country_transition_risk.parquet` + `gold/rank_stability.json`. Every
 row carries `weight_coverage=0.8` so a partial score is never presented as
-a complete one.
+a complete one. **Unaffected by `m6-evaluate` below** — v1 remains the sole
+production score.
+
+`m6-evaluate` (M6 phase 2, ADR 0008) runs a pre-registered, mechanical
+evidence gate over the M6 energy features — coverage thresholds fixed
+before evaluation, feature stability (lookback-window and one-year-revision
+sensitivity), collinearity/VIF/redundancy clustering, a leave-one-country-out
+incremental-information test with a 200-permutation null distribution,
+temporal backtesting via the same rolling origins as `backtest`, an
+experimental `score_v2_energy_experimental` side-by-side comparison against
+v1, and weight-robustness at ±10/20/30% — and writes every artifact plus a
+mechanical ACCEPT/DIAGNOSTICS_ONLY/REVISE decision to
+`gold/research/m6/decision.json`. Does **not** modify
+`gold/country_transition_risk.parquet`, `cli.score()`, or `cli.publish()` —
+promoting the experimental v2 score to production is a distinct decision,
+not automatic, and Azure is untouched regardless of the decision (see
+ADR 0008).
 
 `features`/`model` exist as tested library functions
 (`climate_risk.features.decoupling`, `climate_risk.scenarios.engine`) but
@@ -167,7 +185,12 @@ src/climate_risk/
                   percentile), not yet wired into scoring/
   scenarios/      deterministic trend baseline + seeded bootstrap Monte Carlo
   backtesting/    rolling-origin harness (no_change / deterministic / bootstrap vs actuals)
-  scoring/        transition risk scoring v1 + weight-perturbation sensitivity
+  scoring/        transition risk scoring v1 (production) + weight-perturbation sensitivity;
+                  energy_component.py + risk_score_v2_energy.py: experimental M6 v2, not
+                  imported by v1 or by cli.score()/cli.publish()
+  research/       M6 phase 2 evidence-gate modules (coverage/stability/redundancy/
+                  incremental-information/temporal-backtest) -- research-only, one-way
+                  dependency into the existing pipeline's outputs, never the reverse
   quality/        quality rule registry + publish-gate logic
   publishing/     fail-closed latest_successful_run barrier
   storage/        backend-neutral local/ADLS Gen2 storage abstraction (ADR 0004)
@@ -175,12 +198,14 @@ src/climate_risk/
   regimes/ api/   scaffolded, not yet implemented
 config/           versioned YAML: sources, countries, quality rules
 tests/
-  unit/           pure logic (config, quality, publishing, decoupling, scenarios, backtesting, scoring)
+  unit/           pure logic (config, quality, publishing, decoupling, scenarios, backtesting,
+                  scoring, M6 research modules)
   contracts/      adapter standardisation + quality-check contracts, adversarial fixtures
   integration/    full ingest/silver pipelines against local fixtures (no network required)
 docs/adr/         architectural decision records, including the backtest reproduction finding
+                  and the M6 phases 1-2 source verification / score-gating decision (0007, 0008)
 docs/finops.md    Azure cost design, guardrails, shutdown/recovery runbook
-docs/m6_source_feasibility.md  M6 source licence/access/coverage verification + feature contract
+docs/m6_source_feasibility.md  M6 phase 1 source licence/access/coverage verification + feature contract
 infra/            Terraform (Azure) -- deployed and verified (rg-climate-risk-dev)
 Dockerfile        production container image (built and smoke-tested locally)
 ```

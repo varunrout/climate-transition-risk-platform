@@ -201,21 +201,15 @@ def model() -> None:
 
 
 def _latest_silver_panel(lake: LakeStorage) -> tuple[pd.DataFrame, str] | None:
-    fact_dirs = lake.silver.glob("fact_country_year_transition/snapshot_set_id=*/data.parquet")
-    if not fact_dirs:
-        return None
-    latest_path = max(fact_dirs, key=lake.silver.modified_at)
-    panel = read_parquet(lake.silver, latest_path)
-    return panel, latest_path
+    from climate_risk.transforms.silver import latest_silver_panel
+
+    return latest_silver_panel(lake)
 
 
 def _latest_silver_energy_panel(lake: LakeStorage) -> tuple[pd.DataFrame, str] | None:
-    fact_dirs = lake.silver.glob("fact_country_year_energy/snapshot_set_id=*/data.parquet")
-    if not fact_dirs:
-        return None
-    latest_path = max(fact_dirs, key=lake.silver.modified_at)
-    panel = read_parquet(lake.silver, latest_path)
-    return panel, latest_path
+    from climate_risk.transforms.silver import latest_silver_energy_panel
+
+    return latest_silver_energy_panel(lake)
 
 
 @app.command()
@@ -260,6 +254,290 @@ def energy_features(
         trailing_window_years=trailing_window_years,
     )
     typer.echo(features.to_string(index=False))
+
+
+@app.command()
+def m6_evaluate(
+    n_permutations: int = typer.Option(
+        200, help="Permutations for the incremental-information null-distribution test."
+    ),
+    random_seed: int = typer.Option(42, help="Seed for permutation test and weight perturbation."),
+) -> None:
+    """M6 phase 2: energy-feature evaluation and score-integration gating.
+
+    Research-only -- reads the existing v1 score + silver tables, writes
+    every evidence artifact under gold/research/m6/, and makes one
+    evidence-based ACCEPT / DIAGNOSTICS_ONLY / REVISE decision
+    (gold/research/m6/decision.json). Never overwrites
+    gold/country_transition_risk.parquet (v1) or gold/manifests/ (publish
+    evidence); score v2 is written to a separate path.
+    """
+    from scipy import stats
+
+    from climate_risk.features.decoupling import compute_decoupling_for_panel
+    from climate_risk.research import m6_coverage, m6_incremental, m6_redundancy, m6_stability
+    from climate_risk.research.m6_panel import build_evaluation_panel, feature_catalog
+    from climate_risk.scenarios.engine import run_country_scenario
+    from climate_risk.scoring.energy_component import compute_energy_component
+    from climate_risk.scoring.risk_score import compute_raw_metrics, compute_risk_scores
+    from climate_risk.scoring.risk_score_v2_energy import (
+        compute_risk_scores_v2,
+        weight_perturbation_analysis_v2,
+    )
+
+    log = get_logger(stage="m6-evaluate")
+    lake = LakeStorage.from_env()
+
+    transition_found = _latest_silver_panel(lake)
+    energy_found = _latest_silver_energy_panel(lake)
+    if transition_found is None or energy_found is None:
+        typer.echo(
+            "requires both fact_country_year_transition and fact_country_year_energy; "
+            "run `climate-risk ingest` and `climate-risk build-silver` first",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    transition_panel, _ = transition_found
+    energy_panel, _ = energy_found
+    countries = sorted(load_countries().keys())
+
+    # ---------------------------------------------------------------
+    # 1. Freeze the current v1 baseline (never overwritten by anything below)
+    # ---------------------------------------------------------------
+    if not lake.gold.exists("country_transition_risk.parquet"):
+        typer.echo(
+            "no gold/country_transition_risk.parquet found; run `climate-risk score` first",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    v1_scores = read_parquet(lake.gold, "country_transition_risk.parquet")
+    v1_rank_stability = (
+        read_json(lake.gold, "rank_stability.json")
+        if lake.gold.exists("rank_stability.json")
+        else None
+    )
+    manifest_paths = lake.gold.glob("manifests/*.json")
+    latest_manifest = (
+        read_json(lake.gold, max(manifest_paths, key=lake.gold.modified_at))
+        if manifest_paths
+        else None
+    )
+    from climate_risk.scoring.risk_score import EFFECTIVE_WEIGHTS, NOMINAL_WEIGHTS, WEIGHT_COVERAGE
+
+    baseline_frozen = {
+        "score_version": "v1",
+        "nominal_weights": NOMINAL_WEIGHTS,
+        "effective_weights": EFFECTIVE_WEIGHTS,
+        "weight_coverage": WEIGHT_COVERAGE,
+        "country_scores": v1_scores.to_dict(orient="records"),
+        "rank_stability": v1_rank_stability,
+        "latest_publish_manifest": latest_manifest,
+    }
+    write_json(lake.gold, "research/m6/baseline_v1_frozen.json", baseline_frozen)
+    log.info("v1 baseline frozen", countries=len(v1_scores))
+
+    # ---------------------------------------------------------------
+    # 2. Evaluation panel + feature catalog
+    # ---------------------------------------------------------------
+    evaluation_panel = build_evaluation_panel(lake)
+    write_parquet(lake.gold, "research/m6/evaluation_panel.parquet", evaluation_panel)
+    catalog_frame = pd.DataFrame([f.model_dump() for f in feature_catalog()])
+    write_parquet(lake.gold, "research/m6/feature_catalog.parquet", catalog_frame)
+
+    # ---------------------------------------------------------------
+    # 3. Coverage
+    # ---------------------------------------------------------------
+    coverage_report = m6_coverage.run_coverage_analysis(evaluation_panel, energy_panel)
+    write_parquet(lake.gold, "research/m6/coverage_report.parquet", coverage_report)
+    compact_component_columns = [
+        "low_carbon_share_elec",
+        "clean_power_momentum_pp_per_year",
+        "fossil_persistence_mean_pct",
+    ]
+    compact_coverage = coverage_report[
+        coverage_report["feature_name"].isin(compact_component_columns)
+    ]
+    coverage_gate_passed = len(compact_coverage) == len(compact_component_columns) and bool(
+        compact_coverage["meets_minimum_thresholds"].all()
+    )
+    log.info("coverage analysis complete", coverage_gate_passed=coverage_gate_passed)
+
+    # ---------------------------------------------------------------
+    # 4. Stability
+    # ---------------------------------------------------------------
+    yoy = m6_stability.yoy_volatility(energy_panel, column="low_carbon_share_elec")
+    lookback = m6_stability.lookback_window_sensitivity(energy_panel)
+    lookback_pairwise = lookback["pairwise_comparisons"]
+    assert isinstance(lookback_pairwise, pd.DataFrame)
+    revision = m6_stability.one_year_revision_sensitivity(energy_panel)
+    stability_summary = m6_stability.summarise_stability(lookback, revision)
+    write_parquet(lake.gold, "research/m6/stability_yoy_volatility.parquet", yoy)
+    write_parquet(
+        lake.gold,
+        "research/m6/stability_lookback_sensitivity.parquet",
+        lookback_pairwise,
+    )
+    write_parquet(lake.gold, "research/m6/stability_revision_sensitivity.parquet", revision)
+    write_json(lake.gold, "research/m6/stability_analysis.json", stability_summary)
+    log.info("stability analysis complete", **stability_summary)
+
+    # ---------------------------------------------------------------
+    # 5. Redundancy / collinearity
+    # ---------------------------------------------------------------
+    correlations = m6_redundancy.correlation_matrices(evaluation_panel)
+    write_parquet(
+        lake.gold,
+        "research/m6/correlation_matrix_pearson.parquet",
+        correlations["pearson"].reset_index(),
+    )
+    write_parquet(
+        lake.gold,
+        "research/m6/correlation_matrix_spearman.parquet",
+        correlations["spearman"].reset_index(),
+    )
+    vif = m6_redundancy.variance_inflation_factors(evaluation_panel)
+    write_parquet(lake.gold, "research/m6/variance_inflation_factors.parquet", vif)
+    groups = m6_redundancy.redundancy_groups(evaluation_panel)
+    write_parquet(lake.gold, "research/m6/redundancy_groups.parquet", groups)
+    log.info("redundancy analysis complete", n_groups=int(groups["redundancy_group"].nunique()))
+
+    # ---------------------------------------------------------------
+    # 6+7. Incremental information + temporal backtest (same rolling-origin
+    # evaluation answers both -- see m6_incremental module docstring)
+    # ---------------------------------------------------------------
+    incremental_dataset = m6_incremental.build_incremental_dataset(
+        transition_panel, energy_panel, countries=countries
+    )
+    write_parquet(lake.gold, "research/m6/temporal_backtest.parquet", incremental_dataset)
+    incremental_result = m6_incremental.leave_one_country_out_comparison(incremental_dataset)
+    permutation_result = m6_incremental.permutation_test(
+        incremental_dataset, n_permutations=n_permutations, random_seed=random_seed
+    )
+    ablation = m6_incremental.ablation_comparison(incremental_dataset)
+    write_parquet(lake.gold, "research/m6/incremental_ablation.parquet", ablation)
+    write_json(
+        lake.gold,
+        "research/m6/incremental_information.json",
+        {"leave_one_country_out": incremental_result, "permutation_test": permutation_result},
+    )
+    log.info(
+        "incremental information test complete",
+        **{k: v for k, v in incremental_result.items() if k != "feature_columns"},
+    )
+
+    # ---------------------------------------------------------------
+    # 8+9. Energy component + score v2 experiment
+    # ---------------------------------------------------------------
+    energy_component = compute_energy_component(evaluation_panel)
+    write_parquet(lake.gold, "research/m6/energy_component.parquet", energy_component)
+
+    decoupling = {
+        r.country_iso3: r
+        for r in compute_decoupling_for_panel(transition_panel, min_observations=5)
+    }
+    scenarios = {}
+    for country_iso3 in countries:
+        result = run_country_scenario(
+            transition_panel, country_iso3=country_iso3, target_year=2050, random_seed=random_seed
+        )
+        if result is not None:
+            scenarios[country_iso3] = result
+    raw_metrics = compute_raw_metrics(
+        transition_panel, decoupling=decoupling, scenarios=scenarios, countries=countries
+    )
+
+    v1_rescored = compute_risk_scores(
+        raw_metrics
+    )  # identical to gold/country_transition_risk.parquet, for a same-run comparison
+    v2_scores = compute_risk_scores_v2(raw_metrics, energy_component=energy_component)
+    write_parquet(lake.gold, "research/m6/score_v2_energy_experimental.parquet", v2_scores)
+
+    comparison = (
+        v1_rescored.set_index("country_iso3")[["score_total", "rank"]]
+        .rename(columns={"score_total": "score_total_v1", "rank": "rank_v1"})
+        .join(
+            v2_scores.set_index("country_iso3")[
+                ["score_total", "rank", "score_energy", "energy_confidence", "weight_coverage"]
+            ].rename(columns={"score_total": "score_total_v2", "rank": "rank_v2"}),
+            how="outer",
+        )
+    )
+    comparison["score_delta"] = comparison["score_total_v2"] - comparison["score_total_v1"]
+    comparison["rank_delta"] = comparison["rank_v1"] - comparison["rank_v2"]
+    comparison = comparison.reset_index().sort_values("score_delta", key=abs, ascending=False)
+    write_parquet(lake.gold, "research/m6/score_v1_vs_v2.parquet", comparison)
+    common_countries = comparison.dropna(subset=["rank_v1", "rank_v2"])
+    v1_vs_v2_spearman = (
+        float(stats.spearmanr(common_countries["rank_v1"], common_countries["rank_v2"]).correlation)
+        if len(common_countries) >= 3
+        else None
+    )
+    log.info("score v1 vs v2 comparison complete", v1_vs_v2_spearman=v1_vs_v2_spearman)
+
+    # ---------------------------------------------------------------
+    # 10. Weight robustness (v2)
+    # ---------------------------------------------------------------
+    weight_sensitivity = {
+        f"perturbation_{int(frac * 100)}pct": weight_perturbation_analysis_v2(
+            raw_metrics,
+            energy_component=energy_component,
+            perturbation_fraction=frac,
+            random_seed=random_seed,
+        )
+        for frac in (0.1, 0.2, 0.3)
+    }
+    write_json(lake.gold, "research/m6/weight_sensitivity.json", weight_sensitivity)
+    log.info(
+        "weight robustness (v2) complete",
+        **{k: v["mean_spearman_correlation"] for k, v in weight_sensitivity.items()},
+    )
+
+    # ---------------------------------------------------------------
+    # 14. Decision gate -- mechanical, evidence-based, fixed criteria
+    # ---------------------------------------------------------------
+    reasons: list[str] = []
+    if not coverage_gate_passed:
+        decision = "REVISE"
+        reasons.append(
+            "compact energy component's source features fail the pre-declared coverage thresholds"
+        )
+    elif "error" in incremental_result:
+        decision = "DIAGNOSTICS_ONLY"
+        reasons.append(f"incremental-information test could not run: {incremental_result['error']}")
+    else:
+        p_value_raw = permutation_result.get("permutation_p_value")
+        p_value: float | None = float(p_value_raw) if isinstance(p_value_raw, int | float) else None
+        mae_improvement = incremental_result.get("mae_improvement", 0.0)
+        assert isinstance(mae_improvement, float)
+        robust_30pct = float(weight_sensitivity["perturbation_30pct"]["min_spearman_correlation"])
+        if p_value is not None and p_value <= 0.10 and mae_improvement > 0 and robust_30pct >= 0.85:
+            decision = "ACCEPT"
+            reasons.append(
+                f"leave-one-country-out MAE improved by {mae_improvement:.4f} "
+                f"(permutation p={p_value:.3f}), weight-robust at +/-30% (min Spearman rho={robust_30pct:.3f})"
+            )
+        else:
+            decision = "DIAGNOSTICS_ONLY"
+            reasons.append(
+                f"incremental-information evidence insufficient: mae_improvement={mae_improvement:.4f}, "
+                f"permutation_p_value={p_value}, weight-robustness min Spearman rho at +/-30%={robust_30pct}"
+            )
+
+    decision_record = {
+        "decision": decision,
+        "reasons": reasons,
+        "coverage_gate_passed": coverage_gate_passed,
+        "incremental_information": incremental_result,
+        "permutation_test": permutation_result,
+        "weight_robustness_30pct": weight_sensitivity["perturbation_30pct"],
+        "v1_vs_v2_spearman_rank_correlation": v1_vs_v2_spearman,
+        "score_v2_promoted_to_production": False,
+    }
+    write_json(lake.gold, "research/m6/decision.json", decision_record)
+    log.info("M6 decision", decision=decision, reasons=reasons)
+    typer.echo(f"M6 decision: {decision}")
+    for reason in reasons:
+        typer.echo(f"  - {reason}")
 
 
 @app.command()

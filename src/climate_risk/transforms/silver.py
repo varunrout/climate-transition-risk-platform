@@ -28,6 +28,28 @@ from climate_risk.storage import LakeStorage, StorageBackend, read_parquet
 CORE_FEATURES = ["co2_mt", "real_gdp", "population"]
 
 
+def latest_silver_panel(lake: LakeStorage) -> tuple[pd.DataFrame, str] | None:
+    """Most recently written fact_country_year_transition snapshot, or None
+    if build-silver hasn't run yet. Shared by the CLI and by M6 research
+    code so there is exactly one "latest" definition (real backend
+    last-modified metadata, same rule as `latest_bronze_snapshot`)."""
+    fact_dirs = lake.silver.glob("fact_country_year_transition/snapshot_set_id=*/data.parquet")
+    if not fact_dirs:
+        return None
+    latest_path = max(fact_dirs, key=lake.silver.modified_at)
+    return read_parquet(lake.silver, latest_path), latest_path
+
+
+def latest_silver_energy_panel(lake: LakeStorage) -> tuple[pd.DataFrame, str] | None:
+    """Most recently written fact_country_year_energy snapshot, or None if
+    it hasn't been built (independent of the core transition panel)."""
+    fact_dirs = lake.silver.glob("fact_country_year_energy/snapshot_set_id=*/data.parquet")
+    if not fact_dirs:
+        return None
+    latest_path = max(fact_dirs, key=lake.silver.modified_at)
+    return read_parquet(lake.silver, latest_path), latest_path
+
+
 def latest_bronze_snapshot(bronze: StorageBackend, source_name: str) -> tuple[str, str]:
     """Return (data_path, snapshot_id) for the most recently written bronze
     snapshot of `source_name`. "Latest" is picked by real backend
