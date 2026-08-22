@@ -34,6 +34,12 @@ from climate_risk.storage import (
     write_json,
     write_parquet,
 )
+from climate_risk.storage.runtime import (
+    StorageRuntimeError,
+    is_azure_container_apps_job,
+    prepare_lake_from_env,
+    verify_durable_success,
+)
 
 app = typer.Typer(add_completion=False, no_args_is_help=True)
 
@@ -76,8 +82,7 @@ def ingest(
     from climate_risk.ingestion.world_bank import WorldBankAdapter
 
     log = get_logger(stage="ingest")
-    lake = LakeStorage.from_env()
-    lake.ensure_zones()
+    lake = prepare_lake_from_env(log, ensure_zones=True)
 
     registry = load_source_registry()
     adapters: dict[str, SourceAdapter] = {
@@ -134,8 +139,7 @@ def build_silver() -> None:
     )
 
     log = get_logger(stage="build-silver")
-    lake = LakeStorage.from_env()
-    lake.ensure_zones()
+    lake = prepare_lake_from_env(log, ensure_zones=True)
 
     panel, snapshot_set_id, report = build_silver_panel(lake)
     if report.has_fatal:
@@ -228,7 +232,7 @@ def energy_features(
     from climate_risk.features.energy_transition import compute_energy_features_for_panel
 
     log = get_logger(stage="energy-features")
-    lake = LakeStorage.from_env()
+    lake = prepare_lake_from_env(log)
 
     found = _latest_silver_energy_panel(lake)
     if found is None:
@@ -286,7 +290,7 @@ def m6_evaluate(
     )
 
     log = get_logger(stage="m6-evaluate")
-    lake = LakeStorage.from_env()
+    lake = prepare_lake_from_env(log)
 
     transition_found = _latest_silver_panel(lake)
     energy_found = _latest_silver_energy_panel(lake)
@@ -562,7 +566,7 @@ def m6_harden(
     from climate_risk.scoring.risk_score import compute_raw_metrics
 
     log = get_logger(stage="m6-harden")
-    lake = LakeStorage.from_env()
+    lake = prepare_lake_from_env(log)
 
     transition_found = _latest_silver_panel(lake)
     energy_found = _latest_silver_energy_panel(lake)
@@ -689,7 +693,7 @@ def backtest(
     from climate_risk.backtesting.rolling_origin import run_backtest, summarise_metrics
 
     log = get_logger(stage="backtest")
-    lake = LakeStorage.from_env()
+    lake = prepare_lake_from_env(log)
 
     found = _latest_silver_panel(lake)
     if found is None:
@@ -749,7 +753,7 @@ def score(
     )
 
     log = get_logger(stage="score")
-    lake = LakeStorage.from_env()
+    lake = prepare_lake_from_env(log)
 
     found = _latest_silver_panel(lake)
     if found is None:
@@ -838,7 +842,7 @@ def score(
 
 
 @app.command()
-def publish() -> None:
+def publish() -> str:
     """Fail-closed publish: promote the current gold outputs to latest_successful_run,
     or refuse and leave the previous release untouched (climate_risk.publishing.barrier).
 
@@ -863,7 +867,7 @@ def publish() -> None:
     from climate_risk.transforms.silver import latest_complete_common_year
 
     log = get_logger(stage="publish")
-    lake = LakeStorage.from_env()
+    lake = prepare_lake_from_env(log)
     run = PipelineRun.start()
     log = log.bind(run_id=run.run_id)
 
@@ -1023,24 +1027,34 @@ def publish() -> None:
         f"published release_id={snapshot_set_id}, active_score_version={V2_SCORE_VERSION} "
         f"({len(scores_v2)} countries scored v2, {len(scores_v1)} v1 comparison)"
     )
+    return run.run_id
 
 
 @app.command()
 def run() -> None:
     """Run every implemented stage in order: ingest, build-silver, backtest, score, publish."""
-    ingest(source=None)
-    build_silver()
+    log = get_logger(stage="run")
     try:
-        energy_features(trailing_window_years=5)
-    except typer.Exit:
-        # Diagnostic/exploratory artifact (M6) -- not required for publish, which
-        # never reads gold/energy_transition_features.parquet or gates on it.
-        get_logger(stage="run").warning(
-            "energy-features skipped (no energy silver table or insufficient history)"
-        )
-    backtest(n_simulations=10_000, random_seed=42)
-    score(target_year=2050, random_seed=42)
-    publish()
+        ingest(source=None)
+        build_silver()
+        try:
+            energy_features(trailing_window_years=5)
+        except typer.Exit:
+            # Diagnostic/exploratory artifact (M6) -- not required for publish, which
+            # never reads gold/energy_transition_features.parquet or gates on it.
+            log.warning("energy-features skipped (no energy silver table or insufficient history)")
+        backtest(n_simulations=10_000, random_seed=42)
+        score(target_year=2050, random_seed=42)
+        published_run_id = publish()
+        if is_azure_container_apps_job():
+            verification = verify_durable_success(
+                LakeStorage.from_env(), require_energy=True, expected_run_id=published_run_id
+            )
+            log.info("durable success verified", **verification)
+    except StorageRuntimeError as exc:
+        log.error("storage runtime invariant failed", error=str(exc))
+        typer.echo(f"storage runtime invariant failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
     typer.echo(
         "All implemented stages complete.",
         err=True,

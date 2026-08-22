@@ -1,6 +1,6 @@
 # ADR 0010: M6 Azure promotion blocked -- reproducible silent-write incident
 
-- Status: Accepted (incident record). M6 Azure promotion is **NOT complete**.
+- Status: Accepted (incident record, root cause proven; preventive fix implemented locally). M6 Azure promotion is **NOT complete** until a new image is built and verified in Azure.
 - Date: 2026-08-22
 
 ## Context
@@ -84,21 +84,95 @@ delay.
   (`climate_risk.storage.azure`, untouched by any M6 work) worked
   end-to-end with real writes against this same account.
 
-## What remains the leading hypothesis (unresolved)
+## Root cause (proven in follow-up)
 
-The application-level code (`AzureStorageBackend.write_bytes` in
-`src/climate_risk/storage/azure.py`, unchanged by M6) opens an
-`adlfs.AzureBlobFileSystem` file handle, writes, and relies on the `with`
-block's `__exit__` to close/flush/commit the blob. Every symptom here is
-consistent with that close/flush not actually completing against the real
-backend while still not raising an exception the application can see --
-e.g. an async-client finalization step that silently no-ops or races
-against container/process teardown. This is a hypothesis, not a confirmed
-root cause: root-causing it further needs either local reproduction
-against a real (or realistically mocked) ADLS Gen2 endpoint with
-network-level tracing, or an upstream `adlfs`/`fsspec` issue search, neither
-of which was completed here. **Recorded as a real, open engineering
-question, not resolved by this ADR.**
+The failed executions were started with a per-execution image/command/args
+override. Azure execution metadata for the two reproduced failures shows:
+
+- `job-climate-risk-dev-pipeline-8r4dvow`: image
+  `ghcr.io/varunrout/climate-risk-pipeline:7f11e31`,
+  `command=["climate-risk"]`, `args=["run"]`, status `Succeeded`.
+- `job-climate-risk-dev-pipeline-agnn6vw`: image
+  `ghcr.io/varunrout/climate-risk-pipeline:7f11e31`,
+  `command=["climate-risk"]`, `args=["ingest"]`, status `Succeeded`.
+
+Those execution templates do not contain the Terraform job-template env
+block with `CLIMATE_RISK_RAW_ROOT`, `CLIMATE_RISK_BRONZE_ROOT`,
+`CLIMATE_RISK_SILVER_ROOT`, and `CLIMATE_RISK_GOLD_ROOT`. The current live
+job template, after rollback, does contain all four `abfss://...` roots and
+the user-assigned managed identity `AZURE_CLIENT_ID`.
+
+The earlier note that `validate-config` saw `CLIMATE_RISK_CONFIG_DIR=/app/config`
+did **not** prove the Terraform env block survived the manual start
+override: the Dockerfile itself also bakes `CLIMATE_RISK_CONFIG_DIR=/app/config`.
+The same Dockerfile also bakes `CLIMATE_RISK_LAKE_ROOT=/data/lake`.
+
+Therefore, when the failed override execution did not receive the four
+per-zone ADLS roots, `LakeStorage.from_env()` used its designed local-dev
+fallback: `/data/lake/{raw,bronze,silver,gold}` inside the container. The
+pipeline wrote successfully to that ephemeral container filesystem, so
+Python saw no error and Azure correctly reported exit code 0 / `Succeeded`.
+After the container exited, the ephemeral files disappeared, leaving ADLS
+unchanged.
+
+This was not an `adlfs`/`fsspec` flush bug. The unchanged storage code path
+worked in ADR 0005/0006 because those executions used the Terraform-backed
+job template with explicit ADLS zone roots. The failed image changed M6
+ingestion/scoring behavior but did not change `src/climate_risk/storage`;
+the dangerous missing guard was that an Azure runtime could still legally
+select `LocalStorageBackend`.
+
+
+## Corrective fix implemented locally
+
+`src/climate_risk/storage/runtime.py` now adds startup storage diagnostics
+and runtime invariants:
+
+- every CLI command logs `raw`, `bronze`, `silver`, and `gold` backend
+  classes plus sanitized root locations;
+- if Azure Container Apps runtime is detected and any zone resolves to
+  `LocalStorageBackend`, the command fails immediately with a nonzero exit;
+- local development remains unchanged: local roots are still allowed when
+  not running in Azure;
+- after a cloud `climate-risk run` publishes, `verify_durable_success()`
+  re-reads durable artifacts through the configured storage backend before
+  allowing success.
+
+The durable check verifies raw snapshots/manifests, bronze artifacts,
+silver transition and energy tables, required gold score artifacts,
+`latest_successful_run.json`, the manifest referenced by that pointer, the
+expected current run id, and the active production score artifact declared
+by the manifest.
+
+## Preventive tests added
+
+`tests/unit/test_storage_runtime.py` covers the incident surface directly:
+
+- Azure runtime + local RAW/BRONZE/SILVER/GOLD root fails;
+- all Azure roots are allowed;
+- local runtime + local roots are allowed;
+- ephemeral-only cloud run fails;
+- missing raw, silver, and gold artifacts fail durable verification;
+- absent latest pointer fails;
+- pointer referencing the wrong run fails;
+- unreadable referenced manifest fails;
+- full durable verification succeeds;
+- backend diagnostic logs do not include credential-like env values.
+
+Validation on 2026-08-22: `ruff check src tests` passed,
+`ruff format --check src tests` passed (with a local cache-write warning
+only), `mypy src` passed, and `pytest` passed: 178 tests. A clean local
+`climate-risk run` against `artifacts/local_validation_runtime` completed
+real ingestion, energy silver/features, backtest, v1/v2 scoring, and
+publish. Durable verifier output: raw snapshots 3, raw manifests 3, bronze
+artifacts 3, silver transition 1, silver energy 1, pointer run id
+`a5569731-4f83-45c0-ad4f-65960029b834`, manifest path
+`manifests/a5569731-4f83-45c0-ad4f-65960029b834.json`, score version
+`v2_energy`.
+
+Terraform CLI was not installed on the local machine used for this
+follow-up, so `terraform fmt`/`terraform validate` could not be rerun here.
+No Terraform files were changed by the corrective fix.
 
 ## Action taken
 
@@ -125,8 +199,9 @@ level of direct-storage scrutiny used to find it.
 - No local/Azure parity comparison could be performed (section 14 of the
   M6-phase-3 brief) -- there is no real M6-phase-3 Azure output to compare
   against local output.
-- This is flagged as a standalone follow-up investigation (spawned as a
-  separate task) rather than deferred silently.
+- The follow-up investigation proved the root cause above and implemented the
+  local preventive fix. A new Azure image/promotion is still required before
+  M6 can be marked Azure-complete.
 - No new Azure services or infrastructure were added or left running;
   resource inventory is unchanged from ADR 0006 (still the same job,
   storage account, identities, budget). Cost impact of the two diagnostic
