@@ -41,7 +41,7 @@ variable "ghcr_owner" {
 
 variable "ghcr_image_name" {
   type    = string
-  default = "climate-transition-risk"
+  default = "climate-risk-pipeline"
 }
 
 variable "job_trigger_type" {
