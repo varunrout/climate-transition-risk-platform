@@ -1,12 +1,12 @@
 """climate-risk CLI entrypoint.
 
 Milestone status (see README.md for the authoritative table): `ingest` (M1),
-`build-silver` (M2) and `backtest` (M4) are implemented. `features`/`model`
-are library functions (climate_risk.features.decoupling,
+`build-silver` (M2), `backtest` (M4) and `score` (M5) are implemented.
+`features`/`model` are library functions (climate_risk.features.decoupling,
 climate_risk.scenarios.engine) not yet wired as standalone CLI commands.
-`score`, `publish` are not yet implemented and exit with a clear
-NotImplementedError rather than pretending to run. `run` chains whichever
-stages exist.
+`publish` is not yet implemented end-to-end and exits with a clear
+NotImplementedError rather than pretending to run (the publish barrier
+itself is implemented and tested). `run` chains whichever stages exist.
 """
 
 from __future__ import annotations
@@ -202,9 +202,79 @@ def backtest(
 
 
 @app.command()
-def score() -> None:
-    """Not yet implemented (M5)."""
-    _not_implemented("score", milestone="M5")
+def score(
+    lake_root: str | None = typer.Option(None, help="Override the local lake root."),
+    target_year: int = typer.Option(
+        2050, help="Scenario horizon for the forward-downside component."
+    ),
+    random_seed: int = typer.Option(
+        42, help="Seed for scenario simulation and weight perturbation."
+    ),
+) -> None:
+    """Compute transition risk scores (v1, 4 of 5 components) and write gold/country_transition_risk.parquet."""
+    import glob
+    import json
+
+    from climate_risk.features.decoupling import compute_decoupling_for_panel
+    from climate_risk.scenarios.engine import run_country_scenario
+    from climate_risk.scoring.risk_score import (
+        WEIGHT_COVERAGE,
+        compute_raw_metrics,
+        compute_risk_scores,
+        weight_perturbation_analysis,
+    )
+
+    log = get_logger(stage="score")
+    paths = RunPaths.from_env({"CLIMATE_RISK_LAKE_ROOT": lake_root} if lake_root else {})
+
+    fact_dirs = sorted(
+        glob.glob(str(paths.silver / "fact_country_year_transition" / "snapshot_set_id=*"))
+    )
+    if not fact_dirs:
+        typer.echo("no silver panel found; run `climate-risk build-silver` first", err=True)
+        raise typer.Exit(code=1)
+    panel = pd.read_parquet(Path(fact_dirs[-1]) / "data.parquet")
+    countries = sorted(panel["country_iso3"].unique())
+
+    decoupling = {
+        r.country_iso3: r for r in compute_decoupling_for_panel(panel, min_observations=5)
+    }
+    scenarios = {}
+    for country_iso3 in countries:
+        result = run_country_scenario(
+            panel, country_iso3=country_iso3, target_year=target_year, random_seed=random_seed
+        )
+        if result is not None:
+            scenarios[country_iso3] = result
+
+    raw_metrics = compute_raw_metrics(
+        panel, decoupling=decoupling, scenarios=scenarios, countries=countries
+    )
+    scores = compute_risk_scores(raw_metrics)
+    if scores.empty:
+        typer.echo("no country scored (insufficient data for every candidate)", err=True)
+        raise typer.Exit(code=1)
+
+    stability = weight_perturbation_analysis(
+        raw_metrics, n_perturbations=200, random_seed=random_seed
+    )
+
+    paths.gold.mkdir(parents=True, exist_ok=True)
+    scores.to_parquet(paths.gold / "country_transition_risk.parquet", index=False)
+    (paths.gold / "rank_stability.json").write_text(
+        json.dumps(stability, indent=2), encoding="utf-8"
+    )
+
+    log.info(
+        "score complete",
+        countries_scored=len(scores),
+        countries_in_panel=len(countries),
+        weight_coverage=WEIGHT_COVERAGE,
+        **stability,
+    )
+    typer.echo(scores.to_string(index=False))
+    typer.echo(f"\nweight_coverage={WEIGHT_COVERAGE:.2f} (energy component not computed; see ADR)")
+    typer.echo(f"rank stability: {stability}")
 
 
 @app.command()
@@ -215,12 +285,13 @@ def publish() -> None:
 
 @app.command()
 def run() -> None:
-    """Run every implemented stage in order. Currently: ingest, build-silver, backtest."""
+    """Run every implemented stage in order. Currently: ingest, build-silver, backtest, score."""
     ingest(source=None, lake_root=None)
     build_silver(lake_root=None)
     backtest(lake_root=None, n_simulations=10_000, random_seed=42)
+    score(lake_root=None, target_year=2050, random_seed=42)
     typer.echo(
-        "Stages score/publish are not yet implemented; run stopped after backtest. "
+        "Stage publish is not yet implemented; run stopped after score. "
         "See README.md milestone table.",
         err=True,
     )
