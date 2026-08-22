@@ -22,6 +22,16 @@ variable "job_identity_id" {
   type = string
 }
 
+variable "job_identity_client_id" {
+  type        = string
+  description = "Client ID of the job's user-assigned managed identity -- passed through as AZURE_CLIENT_ID so azure.identity picks it unambiguously. Not a secret."
+}
+
+variable "storage_account_name" {
+  type        = string
+  description = "ADLS Gen2 storage account name, used to build the four abfss:// zone URIs (raw/bronze/silver/gold)."
+}
+
 variable "image_ref" {
   type        = string
   description = "Full public GHCR image reference, e.g. ghcr.io/<owner>/climate-transition-risk:<git-sha>. Immutable git-SHA tag, never 'latest'. Public image -> no registry credentials needed to pull it."
@@ -41,11 +51,6 @@ variable "trigger_type" {
     condition     = contains(["Manual", "Schedule"], var.trigger_type)
     error_message = "trigger_type must be \"Manual\" or \"Schedule\"."
   }
-}
-
-variable "lake_root_url" {
-  type        = string
-  description = "abfss:// URL for the ADLS Gen2 lake root. See main.tf KNOWN GAP comment -- not yet consumable by the pipeline."
 }
 
 variable "tags" {

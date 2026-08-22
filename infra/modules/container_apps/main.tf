@@ -90,18 +90,34 @@ resource "azurerm_container_app_job" "pipeline" {
       # actual behaviour is declared in code, not left to the image default.
       args = ["run"]
 
-      # KNOWN GAP (see docs/finops.md "Cloud storage I/O" section): the
-      # pipeline's RunPaths only reads/writes local filesystem paths today.
-      # It does not yet know how to read/write an abfss:// URL -- that needs
-      # an fsspec-backed adapter (adlfs package) that has not been added or
-      # tested. Until that lands, this job would need an ephemeral local
-      # scratch path plus an explicit az storage/azcopy sync step, or the
-      # abfss support must be implemented and verified first. This variable
-      # exists so the Terraform shape is correct when that work lands, not
-      # because CLIMATE_RISK_LAKE_ROOT=abfss://... works today.
+      # Four independent zone URIs, not one lake-root parent -- ADLS Gen2
+      # has no valid abfss://<account>/.. above four separate filesystems
+      # (ADR 0003's root cause). climate_risk.storage.LakeStorage reads
+      # each of these directly (ADR 0004); no local-path assumption is made
+      # anywhere in that read path.
       env {
-        name  = "CLIMATE_RISK_LAKE_ROOT"
-        value = var.lake_root_url
+        name  = "CLIMATE_RISK_RAW_ROOT"
+        value = "abfss://raw@${var.storage_account_name}.dfs.core.windows.net/"
+      }
+      env {
+        name  = "CLIMATE_RISK_BRONZE_ROOT"
+        value = "abfss://bronze@${var.storage_account_name}.dfs.core.windows.net/"
+      }
+      env {
+        name  = "CLIMATE_RISK_SILVER_ROOT"
+        value = "abfss://silver@${var.storage_account_name}.dfs.core.windows.net/"
+      }
+      env {
+        name  = "CLIMATE_RISK_GOLD_ROOT"
+        value = "abfss://gold@${var.storage_account_name}.dfs.core.windows.net/"
+      }
+      # Selects ManagedIdentityCredential(client_id=...) directly and
+      # unambiguously in climate_risk.storage.azure.resolve_credential --
+      # a user-assigned identity is otherwise ambiguous to
+      # DefaultAzureCredential. Non-secret identifier, safe as a plain env var.
+      env {
+        name  = "AZURE_CLIENT_ID"
+        value = var.job_identity_client_id
       }
       env {
         name  = "CLIMATE_RISK_CONFIG_DIR"

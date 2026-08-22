@@ -63,10 +63,11 @@ module "container_apps" {
   location                   = azurerm_resource_group.main.location
   log_analytics_workspace_id = module.monitoring.workspace_id
   job_identity_id            = module.identity.job_identity_id
+  job_identity_client_id     = module.identity.job_identity_client_id
+  storage_account_name       = module.storage.storage_account_name
   image_ref                  = local.image_ref
   image_digest               = var.image_digest
   trigger_type               = var.job_trigger_type
-  lake_root_url              = "abfss://raw@${module.storage.storage_account_name}.dfs.core.windows.net/.." # see container_apps module KNOWN GAP comment
   tags                       = local.tags
 }
 
