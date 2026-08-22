@@ -1,8 +1,8 @@
 """Source-agnostic ingestion orchestration (01_data_ingestion.md sections 3-6, 11).
 
-Layout on disk mirrors the target ADLS Gen2 layout:
+Zone layout mirrors the target ADLS Gen2 filesystems:
 
-    raw/source=<source>/ingest_date=YYYY-MM-DD/run_id=<uuid>/payload.*
+    raw/source=<source>/ingest_date=YYYY-MM-DD/run_id=<uuid>/payload.bin
                                                               manifest.json
     bronze/source=<source>/snapshot_id=<sha256-prefix>/data.parquet
 
@@ -12,45 +12,45 @@ promotion only happens when validation contains no FATAL event ("fail
 closed" — a rejected snapshot stays quarantined under raw/ and never
 reaches bronze, so the previously accepted bronze snapshot for this source
 is left untouched).
+
+Adapters only fetch and parse bytes in memory (climate_risk.ingestion.base);
+this module is the only place that writes to storage, via the
+backend-neutral `StorageBackend` protocol -- see ADR 0003 for why that
+separation matters.
 """
 
 from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from climate_risk.config.loader import RunPaths
+import pandas as pd
+
 from climate_risk.contracts.models import (
     IngestManifest,
     IngestStatus,
     QualitySeverity,
-    RawArtifact,
 )
 from climate_risk.contracts.run import current_git_commit
 from climate_risk.ingestion.base import SourceAdapter
 from climate_risk.observability.logging import get_logger
+from climate_risk.storage import LakeStorage, write_parquet, write_text
 
 
-def run_ingest(adapter: SourceAdapter, *, paths: RunPaths, run_id: str) -> IngestManifest:
+def run_ingest(adapter: SourceAdapter, *, lake: LakeStorage, run_id: str) -> IngestManifest:
     log = get_logger(stage="ingest", source=adapter.source_name, run_id=run_id)
     start = datetime.now(UTC)
 
-    ingest_date = start.date().isoformat()
-    raw_dir = (
-        paths.raw
-        / f"source={adapter.source_name}"
-        / f"ingest_date={ingest_date}"
-        / f"run_id={run_id}"
-    )
-    artifact = adapter.fetch(dest_dir=raw_dir)
+    artifact, raw_bytes = adapter.fetch()
 
     transport_report = adapter.validate_transport(artifact)
     row_count: int | None = None
     schema_fingerprint = ""
     quality_report = transport_report
+    frame: pd.DataFrame | None = None
 
     if not transport_report.has_fatal:
-        schema_fingerprint = adapter.fingerprint_schema(artifact)
-        frame = adapter.standardise(artifact)
+        schema_fingerprint = adapter.fingerprint_schema(artifact, raw_bytes)
+        frame = adapter.standardise(artifact, raw_bytes)
         row_count = len(frame)
         dataset_report = adapter.quality_checks(frame)
         quality_report = quality_report.model_copy(
@@ -76,7 +76,11 @@ def run_ingest(adapter: SourceAdapter, *, paths: RunPaths, run_id: str) -> Inges
         row_count=row_count,
         validation=quality_report,
     )
-    (raw_dir / "manifest.json").write_text(manifest.model_dump_json(indent=2), encoding="utf-8")
+
+    ingest_date = start.date().isoformat()
+    raw_prefix = f"source={adapter.source_name}/ingest_date={ingest_date}/run_id={run_id}"
+    lake.raw.write_bytes(f"{raw_prefix}/payload.bin", raw_bytes)
+    write_text(lake.raw, f"{raw_prefix}/manifest.json", manifest.model_dump_json(indent=2))
 
     for event in quality_report.events:
         level = {
@@ -87,8 +91,10 @@ def run_ingest(adapter: SourceAdapter, *, paths: RunPaths, run_id: str) -> Inges
         }[event.severity]
         getattr(log, level)("quality event", rule_id=event.rule_id, message=event.message)
 
-    if status == IngestStatus.ACCEPTED:
-        _promote_to_bronze(adapter, artifact, paths=paths)
+    if status == IngestStatus.ACCEPTED and frame is not None:
+        snapshot_id = artifact.sha256[:16]
+        bronze_path = f"source={adapter.source_name}/snapshot_id={snapshot_id}/data.parquet"
+        write_parquet(lake.bronze, bronze_path, frame)
     else:
         log.warning(
             "snapshot quarantined, not promoted to bronze",
@@ -103,14 +109,3 @@ def run_ingest(adapter: SourceAdapter, *, paths: RunPaths, run_id: str) -> Inges
 
 def _resolve_status(has_fatal: bool) -> IngestStatus:
     return IngestStatus.REJECTED if has_fatal else IngestStatus.ACCEPTED
-
-
-def _promote_to_bronze(adapter: SourceAdapter, artifact: RawArtifact, *, paths: RunPaths) -> None:
-    frame = adapter.standardise(artifact)
-    snapshot_id = artifact.sha256[:16]
-    bronze_dir = paths.bronze / f"source={adapter.source_name}" / f"snapshot_id={snapshot_id}"
-    bronze_dir.mkdir(parents=True, exist_ok=True)
-    tmp_path = bronze_dir / ".data.parquet.tmp"
-    final_path = bronze_dir / "data.parquet"
-    frame.to_parquet(tmp_path, index=False)
-    tmp_path.replace(final_path)  # atomic promote per idempotency requirement

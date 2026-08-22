@@ -29,7 +29,13 @@ class QualitySeverity(StrEnum):
 
 
 class RawArtifact(BaseModel):
-    """The result of a single source fetch, before validation/promotion."""
+    """The result of a single source fetch, before validation/promotion.
+
+    Deliberately holds no storage location: adapters fetch bytes in memory
+    and hand them back to the caller, which decides where/how to persist
+    them via a `climate_risk.storage.StorageBackend`. An adapter that knew
+    its own storage path was the root cause of the abfss:// bug in ADR 0003.
+    """
 
     model_config = ConfigDict(frozen=True)
 
@@ -42,7 +48,6 @@ class RawArtifact(BaseModel):
     content_length: int
     sha256: str
     content_type: str | None = None
-    payload_path: str  # path to the immutable raw payload on disk / in the lake
 
 
 class ValidationEvent(BaseModel):

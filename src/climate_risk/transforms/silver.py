@@ -18,31 +18,33 @@ section 9: "a row with missing denominator data is not silently imputed").
 from __future__ import annotations
 
 import hashlib
-from pathlib import Path
 
 import pandas as pd
 
-from climate_risk.config.loader import RunPaths, load_countries
+from climate_risk.config.loader import load_countries
 from climate_risk.contracts.models import QualitySeverity, ValidationEvent, ValidationReport
+from climate_risk.storage import LakeStorage, StorageBackend, read_parquet
 
 CORE_FEATURES = ["co2_mt", "real_gdp", "population"]
 
 
-def latest_bronze_snapshot(paths: RunPaths, source_name: str) -> tuple[Path, str]:
-    """Return (parquet_path, snapshot_id) for the most recently written bronze
-    snapshot of `source_name`. "Latest" is the promotion barrier from
-    01_data_ingestion.md section 8 in its simplest local form: a snapshot
-    only exists here if it was accepted (zero FATAL events)."""
-    source_dir = paths.bronze / f"source={source_name}"
-    candidates = sorted(
-        source_dir.glob("snapshot_id=*/data.parquet"), key=lambda p: p.stat().st_mtime
-    )
+def latest_bronze_snapshot(bronze: StorageBackend, source_name: str) -> tuple[str, str]:
+    """Return (data_path, snapshot_id) for the most recently written bronze
+    snapshot of `source_name`. "Latest" is picked by real backend
+    last-modified metadata (`StorageBackend.modified_at`), not path
+    ordering -- snapshot_id is a content hash, not a timestamp, so multiple
+    historical snapshot dirs are not chronologically sortable by name.
+    "Latest" here is the promotion barrier from 01_data_ingestion.md section
+    8 in its simplest form: a snapshot only exists here if it was accepted
+    (zero FATAL events).
+    """
+    candidates = bronze.glob(f"source={source_name}/snapshot_id=*/data.parquet")
     if not candidates:
         raise FileNotFoundError(
             f"no accepted bronze snapshot for source={source_name!r}; run `climate-risk ingest` first"
         )
-    latest = candidates[-1]
-    snapshot_id = latest.parent.name.removeprefix("snapshot_id=")
+    latest = max(candidates, key=bronze.modified_at)
+    snapshot_id = latest.split("/")[-2].removeprefix("snapshot_id=")
     return latest, snapshot_id
 
 
@@ -63,7 +65,7 @@ def build_dim_country() -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def build_silver_panel(paths: RunPaths) -> tuple[pd.DataFrame, str, ValidationReport]:
+def build_silver_panel(lake: LakeStorage) -> tuple[pd.DataFrame, str, ValidationReport]:
     """Join OWID + World Bank bronze into fact_country_year_transition.
 
     Returns (panel, snapshot_set_id, validation_report). Raises nothing on
@@ -71,11 +73,11 @@ def build_silver_panel(paths: RunPaths) -> tuple[pd.DataFrame, str, ValidationRe
     whether the FATAL-gated promotion to silver/ happens (mirrors the
     ingestion pipeline's fail-closed pattern).
     """
-    owid_path, owid_snapshot = latest_bronze_snapshot(paths, "owid_co2")
-    wb_path, wb_snapshot = latest_bronze_snapshot(paths, "world_bank_wdi")
+    owid_path, owid_snapshot = latest_bronze_snapshot(lake.bronze, "owid_co2")
+    wb_path, wb_snapshot = latest_bronze_snapshot(lake.bronze, "world_bank_wdi")
 
-    owid = pd.read_parquet(owid_path)
-    world_bank = pd.read_parquet(wb_path)
+    owid = read_parquet(lake.bronze, owid_path)
+    world_bank = read_parquet(lake.bronze, wb_path)
 
     countries = load_countries()
     in_scope = set(countries.keys())

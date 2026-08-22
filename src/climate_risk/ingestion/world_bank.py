@@ -11,7 +11,6 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import UTC, datetime
-from pathlib import Path
 
 import pandas as pd
 
@@ -43,8 +42,7 @@ class WorldBankAdapter:
             "?format=json&per_page=20000&date=2000:2025"
         )
 
-    def fetch(self, *, dest_dir: Path) -> RawArtifact:
-        dest_dir.mkdir(parents=True, exist_ok=True)
+    def fetch(self) -> tuple[RawArtifact, bytes]:
         combined: dict[str, list[dict[str, object]]] = {}
         last_status = 200
         for indicator in INDICATORS:
@@ -65,11 +63,9 @@ class WorldBankAdapter:
             )
 
         payload_bytes = json.dumps(combined, sort_keys=True).encode("utf-8")
-        payload_path = dest_dir / f"{self.source_name}.payload"
-        payload_path.write_bytes(payload_bytes)
         sha256 = hashlib.sha256(payload_bytes).hexdigest()
 
-        return RawArtifact(
+        artifact = RawArtifact(
             source_name=self.source_name,
             source_url=self.source_url,
             retrieved_at_utc=datetime.now(UTC),
@@ -77,8 +73,8 @@ class WorldBankAdapter:
             content_length=len(payload_bytes),
             sha256=sha256,
             content_type="application/json",
-            payload_path=str(payload_path),
         )
+        return artifact, payload_bytes
 
     def validate_transport(self, artifact: RawArtifact) -> ValidationReport:
         events: list[ValidationEvent] = []
@@ -92,13 +88,13 @@ class WorldBankAdapter:
             )
         return ValidationReport(events=events)
 
-    def fingerprint_schema(self, artifact: RawArtifact) -> str:
-        frame = self.standardise(artifact)
+    def fingerprint_schema(self, artifact: RawArtifact, raw_bytes: bytes) -> str:
+        frame = self.standardise(artifact, raw_bytes)
         column_signature = "|".join(f"{c}:{frame[c].dtype}" for c in sorted(frame.columns))
         return hashlib.sha256(column_signature.encode("utf-8")).hexdigest()
 
-    def standardise(self, artifact: RawArtifact) -> pd.DataFrame:
-        combined = json.loads(Path(artifact.payload_path).read_text(encoding="utf-8"))
+    def standardise(self, artifact: RawArtifact, raw_bytes: bytes) -> pd.DataFrame:
+        combined = json.loads(raw_bytes.decode("utf-8"))
 
         frames = []
         for indicator, column_name in INDICATORS.items():

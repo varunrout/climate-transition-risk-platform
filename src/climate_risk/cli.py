@@ -5,22 +5,35 @@ Milestone status (see README.md for the authoritative table): `ingest` (M1),
 implemented. `features`/`model` are library functions
 (climate_risk.features.decoupling, climate_risk.scenarios.engine) not yet
 wired as standalone CLI commands. `run` chains every implemented stage.
+
+Storage is backend-neutral (climate_risk.storage.LakeStorage) so the same
+commands run unchanged against a local `data/lake/` checkout or four
+`abfss://` ADLS Gen2 filesystems -- see ADR 0003 for the bug this replaced
+and ADR 0004 for the storage design.
 """
 
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 import sys
-from pathlib import Path
 
 import pandas as pd
 import structlog
 import typer
 
-from climate_risk.config.loader import RunPaths, load_countries, load_source_registry
+from climate_risk.config.loader import load_countries, load_source_registry
 from climate_risk.contracts.models import QualitySeverity
 from climate_risk.contracts.run import PipelineRun
 from climate_risk.observability.logging import configure_logging, get_logger
+from climate_risk.storage import (
+    LakeStorage,
+    read_json,
+    read_parquet,
+    write_json,
+    write_parquet,
+)
 
 app = typer.Typer(add_completion=False, no_args_is_help=True)
 
@@ -54,7 +67,6 @@ def ingest(
     source: list[str] | None = typer.Option(  # noqa: B008 - typer requires call-in-default
         None, help="Source key(s) to ingest (default: all enabled core sources)."
     ),
-    lake_root: str | None = typer.Option(None, help="Override the local lake root."),
 ) -> None:
     """Fetch, validate and snapshot configured sources into raw/ and bronze/."""
     from climate_risk.ingestion.base import SourceAdapter
@@ -63,8 +75,8 @@ def ingest(
     from climate_risk.ingestion.world_bank import WorldBankAdapter
 
     log = get_logger(stage="ingest")
-    paths = RunPaths.from_env({"CLIMATE_RISK_LAKE_ROOT": lake_root} if lake_root else None)
-    paths.ensure_zones()
+    lake = LakeStorage.from_env()
+    lake.ensure_zones()
 
     registry = load_source_registry()
     adapters: dict[str, SourceAdapter] = {
@@ -89,7 +101,7 @@ def ingest(
             )
             continue
         try:
-            manifest = run_ingest(adapters[key], paths=paths, run_id=run.run_id)
+            manifest = run_ingest(adapters[key], lake=lake, run_id=run.run_id)
             log.info(
                 "ingest complete",
                 source=key,
@@ -105,11 +117,8 @@ def ingest(
 
 
 @app.command()
-def build_silver(
-    lake_root: str | None = typer.Option(None, help="Override the local lake root."),
-) -> None:
+def build_silver() -> None:
     """Build dim_country + fact_country_year_transition from the latest bronze snapshots."""
-    from climate_risk.config.loader import load_countries
     from climate_risk.transforms.silver import (
         build_dim_country,
         build_silver_panel,
@@ -118,10 +127,10 @@ def build_silver(
     from climate_risk.transforms.writer import write_dim_country, write_fact_country_year_transition
 
     log = get_logger(stage="build-silver")
-    paths = RunPaths.from_env({"CLIMATE_RISK_LAKE_ROOT": lake_root} if lake_root else None)
-    paths.ensure_zones()
+    lake = LakeStorage.from_env()
+    lake.ensure_zones()
 
-    panel, snapshot_set_id, report = build_silver_panel(paths)
+    panel, snapshot_set_id, report = build_silver_panel(lake)
     if report.has_fatal:
         for event in report.by_severity(QualitySeverity.FATAL):
             log.error("silver build blocked", rule_id=event.rule_id, message=event.message)
@@ -130,8 +139,8 @@ def build_silver(
     for event in report.events:
         log.warning("quality event", rule_id=event.rule_id, message=event.message)
 
-    write_dim_country(build_dim_country(), paths=paths)
-    write_fact_country_year_transition(panel, snapshot_set_id=snapshot_set_id, paths=paths)
+    write_dim_country(build_dim_country(), lake=lake)
+    write_fact_country_year_transition(panel, snapshot_set_id=snapshot_set_id, lake=lake)
 
     countries = set(load_countries().keys())
     eligible_year = latest_complete_common_year(panel, countries=countries)
@@ -159,27 +168,31 @@ def model() -> None:
     _not_implemented("model", milestone="M3")
 
 
+def _latest_silver_panel(lake: LakeStorage) -> tuple[pd.DataFrame, str] | None:
+    fact_dirs = lake.silver.glob("fact_country_year_transition/snapshot_set_id=*/data.parquet")
+    if not fact_dirs:
+        return None
+    latest_path = max(fact_dirs, key=lake.silver.modified_at)
+    panel = read_parquet(lake.silver, latest_path)
+    return panel, latest_path
+
+
 @app.command()
 def backtest(
-    lake_root: str | None = typer.Option(None, help="Override the local lake root."),
     n_simulations: int = typer.Option(10_000, help="Bootstrap simulation count per split."),
     random_seed: int = typer.Option(42, help="Seed for reproducibility."),
 ) -> None:
     """Run rolling-origin backtests over the latest silver panel and write gold/backtest_summary.parquet."""
-    import glob
-
     from climate_risk.backtesting.rolling_origin import run_backtest, summarise_metrics
 
     log = get_logger(stage="backtest")
-    paths = RunPaths.from_env({"CLIMATE_RISK_LAKE_ROOT": lake_root} if lake_root else None)
+    lake = LakeStorage.from_env()
 
-    fact_dirs = sorted(
-        glob.glob(str(paths.silver / "fact_country_year_transition" / "snapshot_set_id=*"))
-    )
-    if not fact_dirs:
+    found = _latest_silver_panel(lake)
+    if found is None:
         typer.echo("no silver panel found; run `climate-risk build-silver` first", err=True)
         raise typer.Exit(code=1)
-    panel = pd.read_parquet(Path(fact_dirs[-1]) / "data.parquet")
+    panel, _ = found
 
     origins = [(2010, 2015), (2012, 2017), (2014, 2019), (2015, 2020), (2016, 2021), (2017, 2022)]
     results = run_backtest(
@@ -192,9 +205,8 @@ def backtest(
         raise typer.Exit(code=1)
 
     summary = summarise_metrics(results)
-    paths.gold.mkdir(parents=True, exist_ok=True)
-    results.to_parquet(paths.gold / "backtest_country_origin.parquet", index=False)
-    summary.to_parquet(paths.gold / "backtest_summary.parquet", index=False)
+    write_parquet(lake.gold, "backtest_country_origin.parquet", results)
+    write_parquet(lake.gold, "backtest_summary.parquet", summary)
 
     log.info("backtest complete", n_splits=len(results), origins=origins)
     typer.echo(summary.to_string(index=False))
@@ -202,7 +214,6 @@ def backtest(
 
 @app.command()
 def score(
-    lake_root: str | None = typer.Option(None, help="Override the local lake root."),
     target_year: int = typer.Option(
         2050, help="Scenario horizon for the forward-downside component."
     ),
@@ -211,9 +222,6 @@ def score(
     ),
 ) -> None:
     """Compute transition risk scores (v1, 4 of 5 components) and write gold/country_transition_risk.parquet."""
-    import glob
-    import json
-
     from climate_risk.features.decoupling import compute_decoupling_for_panel
     from climate_risk.scenarios.engine import run_country_scenario
     from climate_risk.scoring.risk_score import (
@@ -224,15 +232,13 @@ def score(
     )
 
     log = get_logger(stage="score")
-    paths = RunPaths.from_env({"CLIMATE_RISK_LAKE_ROOT": lake_root} if lake_root else None)
+    lake = LakeStorage.from_env()
 
-    fact_dirs = sorted(
-        glob.glob(str(paths.silver / "fact_country_year_transition" / "snapshot_set_id=*"))
-    )
-    if not fact_dirs:
+    found = _latest_silver_panel(lake)
+    if found is None:
         typer.echo("no silver panel found; run `climate-risk build-silver` first", err=True)
         raise typer.Exit(code=1)
-    panel = pd.read_parquet(Path(fact_dirs[-1]) / "data.parquet")
+    panel, _ = found
     countries = sorted(panel["country_iso3"].unique())
 
     decoupling = {
@@ -258,11 +264,8 @@ def score(
         raw_metrics, n_perturbations=200, random_seed=random_seed
     )
 
-    paths.gold.mkdir(parents=True, exist_ok=True)
-    scores.to_parquet(paths.gold / "country_transition_risk.parquet", index=False)
-    (paths.gold / "rank_stability.json").write_text(
-        json.dumps(stability, indent=2), encoding="utf-8"
-    )
+    write_parquet(lake.gold, "country_transition_risk.parquet", scores)
+    write_json(lake.gold, "rank_stability.json", stability)
 
     log.info(
         "score complete",
@@ -277,9 +280,7 @@ def score(
 
 
 @app.command()
-def publish(
-    lake_root: str | None = typer.Option(None, help="Override the local lake root."),
-) -> None:
+def publish() -> None:
     """Fail-closed publish: promote the current gold outputs to latest_successful_run,
     or refuse and leave the previous release untouched (climate_risk.publishing.barrier).
 
@@ -288,16 +289,13 @@ def publish(
     backtest/score individually). Writes a full evidence manifest to
     gold/manifests/<run_id>.json in addition to the barrier's own pointer file.
     """
-    import glob
-    import hashlib
-    import json
-
     from climate_risk.publishing.barrier import PublishBlockedError
     from climate_risk.publishing.barrier import publish as publish_barrier
     from climate_risk.scoring.risk_score import EFFECTIVE_WEIGHTS
+    from climate_risk.transforms.silver import latest_complete_common_year
 
     log = get_logger(stage="publish")
-    paths = RunPaths.from_env({"CLIMATE_RISK_LAKE_ROOT": lake_root} if lake_root else None)
+    lake = LakeStorage.from_env()
     run = PipelineRun.start()
     log = log.bind(run_id=run.run_id)
 
@@ -307,14 +305,14 @@ def publish(
 
     source_snapshots: dict[str, dict[str, str]] = {}
     for source_name in ("owid_co2", "world_bank_wdi"):
-        manifest_paths = sorted(
-            glob.glob(str(paths.raw / f"source={source_name}" / "*" / "*" / "manifest.json"))
-        )
+        manifest_paths = lake.raw.glob(f"source={source_name}/ingest_date=*/run_id=*/manifest.json")
         if not manifest_paths:
             _fail("ingest", f"no ingestion manifest found for source={source_name}")
             typer.echo(f"publish blocked: no ingestion manifest for {source_name}", err=True)
             raise typer.Exit(code=1)
-        latest_manifest = json.loads(Path(manifest_paths[-1]).read_text(encoding="utf-8"))
+        latest_manifest_path = max(manifest_paths, key=lake.raw.modified_at)
+        latest_manifest = read_json(lake.raw, latest_manifest_path)
+        assert isinstance(latest_manifest, dict)
         if latest_manifest["status"] != "ACCEPTED":
             _fail("ingest", f"latest {source_name} snapshot has status {latest_manifest['status']}")
             typer.echo(f"publish blocked: {source_name} snapshot not ACCEPTED", err=True)
@@ -324,18 +322,14 @@ def publish(
             "retrieved_at_utc": latest_manifest["retrieved_at_utc"],
         }
 
-    fact_dirs = sorted(
-        glob.glob(str(paths.silver / "fact_country_year_transition" / "snapshot_set_id=*"))
-    )
-    if not fact_dirs:
+    found = _latest_silver_panel(lake)
+    if found is None:
         _fail("build-silver", "no silver panel found")
         typer.echo("publish blocked: no silver panel found", err=True)
         raise typer.Exit(code=1)
-    snapshot_set_id = Path(fact_dirs[-1]).name.removeprefix("snapshot_set_id=")
-    panel = pd.read_parquet(Path(fact_dirs[-1]) / "data.parquet")
+    panel, latest_fact_path = found
+    snapshot_set_id = latest_fact_path.split("/")[1].removeprefix("snapshot_set_id=")
     countries = set(load_countries().keys())
-
-    from climate_risk.transforms.silver import latest_complete_common_year
 
     eligible_year = latest_complete_common_year(panel, countries=countries)
     completeness = (
@@ -344,19 +338,17 @@ def publish(
         else 0.0
     )
 
-    backtest_summary_path = paths.gold / "backtest_summary.parquet"
-    score_path = paths.gold / "country_transition_risk.parquet"
-    if not backtest_summary_path.exists():
+    if not lake.gold.exists("backtest_summary.parquet"):
         _fail("backtest", "no gold/backtest_summary.parquet found")
         typer.echo("publish blocked: no backtest output found", err=True)
         raise typer.Exit(code=1)
-    if not score_path.exists():
+    if not lake.gold.exists("country_transition_risk.parquet"):
         _fail("score", "no gold/country_transition_risk.parquet found")
         typer.echo("publish blocked: no score output found", err=True)
         raise typer.Exit(code=1)
 
-    backtest_summary = pd.read_parquet(backtest_summary_path)
-    scores = pd.read_parquet(score_path)
+    backtest_summary = read_parquet(lake.gold, "backtest_summary.parquet")
+    scores = read_parquet(lake.gold, "country_transition_risk.parquet")
 
     run.snapshot_set_id = snapshot_set_id
     run.feature_set_version = "decoupling_v1"
@@ -367,6 +359,12 @@ def publish(
     )
     run.config_hash = hashlib.sha256(config_source.encode()).hexdigest()[:16]
     run.succeed(release_id=snapshot_set_id)
+
+    # Azure Container Apps Jobs injects CONTAINER_APP_JOB_EXECUTION_NAME into
+    # every job execution's environment (the execution name, e.g.
+    # "<job-name>-xxxxxxx"). None outside a deployed Container Apps Job --
+    # documented here rather than fabricated if it's ever absent.
+    azure_job_execution_id = os.environ.get("CONTAINER_APP_JOB_EXECUTION_NAME")
 
     manifest = {
         "run_id": run.run_id,
@@ -390,33 +388,42 @@ def publish(
         "publish_status": "PUBLISHED",
         "latest_model_eligible_year": eligible_year,
         "latest_model_eligible_year_completeness": completeness,
-        # Set by Azure Container Apps Jobs itself via the CONTAINER_APP_JOB_EXECUTION_NAME
-        # env var it injects into every job execution -- None when run locally/in CI.
-        "azure_job_execution_id": os.environ.get("CONTAINER_APP_JOB_EXECUTION_NAME"),
+        "azure_job_execution_id": azure_job_execution_id,
     }
-    (paths.gold / "manifests").mkdir(parents=True, exist_ok=True)
-    (paths.gold / "manifests" / f"{run.run_id}.json").write_text(
-        json.dumps(manifest, indent=2), encoding="utf-8"
-    )
+    manifest_path = f"manifests/{run.run_id}.json"
+    write_json(lake.gold, manifest_path, manifest)
 
     try:
-        publish_barrier(run, gold_root=paths.gold)
+        publish_barrier(
+            run,
+            gold=lake.gold,
+            required_artifacts=[
+                "backtest_summary.parquet",
+                "country_transition_risk.parquet",
+                manifest_path,
+            ],
+        )
     except PublishBlockedError as exc:
         typer.echo(f"publish blocked: {exc}", err=True)
         raise typer.Exit(code=1) from exc
 
-    log.info("published", release_id=snapshot_set_id, countries=len(scores))
+    log.info(
+        "published",
+        release_id=snapshot_set_id,
+        countries=len(scores),
+        azure_job_execution_id=azure_job_execution_id,
+    )
     typer.echo(f"published release_id={snapshot_set_id} ({len(scores)} countries scored)")
 
 
 @app.command()
 def run() -> None:
     """Run every implemented stage in order: ingest, build-silver, backtest, score, publish."""
-    ingest(source=None, lake_root=None)
-    build_silver(lake_root=None)
-    backtest(lake_root=None, n_simulations=10_000, random_seed=42)
-    score(lake_root=None, target_year=2050, random_seed=42)
-    publish(lake_root=None)
+    ingest(source=None)
+    build_silver()
+    backtest(n_simulations=10_000, random_seed=42)
+    score(target_year=2050, random_seed=42)
+    publish()
     typer.echo(
         "All implemented stages complete.",
         err=True,

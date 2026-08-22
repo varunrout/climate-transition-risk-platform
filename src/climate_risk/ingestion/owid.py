@@ -10,7 +10,6 @@ section 4 is satisfied by the config, not by string heuristics in this adapter).
 from __future__ import annotations
 
 from io import StringIO
-from pathlib import Path
 
 import httpx
 import pandas as pd
@@ -49,9 +48,8 @@ class OwidCo2Adapter(HttpSourceAdapter):
     def _download(self) -> httpx.Response:
         return get_with_retry(self.source_url, timeout=60.0)
 
-    def standardise(self, artifact: RawArtifact) -> pd.DataFrame:
-        raw = Path(artifact.payload_path).read_bytes().decode("utf-8")
-        frame = pd.read_csv(StringIO(raw))
+    def standardise(self, artifact: RawArtifact, raw_bytes: bytes) -> pd.DataFrame:
+        frame = pd.read_csv(StringIO(raw_bytes.decode("utf-8")))
 
         countries = load_countries()
         in_scope_iso3 = set(countries.keys())

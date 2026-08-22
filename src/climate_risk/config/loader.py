@@ -8,7 +8,6 @@ quality rules) is versioned YAML under config/, loaded here.
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
@@ -23,44 +22,6 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 # accordingly. Read once at import time: it must be set before the process
 # starts, which is how container ENV and shell exports both work.
 CONFIG_DIR = Path(os.environ.get("CLIMATE_RISK_CONFIG_DIR", str(REPO_ROOT / "config")))
-
-
-@dataclass(frozen=True, slots=True)
-class RunPaths:
-    """Filesystem lake root and derived zone paths.
-
-    Local-first: the same logical zone layout (raw/bronze/silver/gold) maps
-    to ADLS Gen2 containers in the Azure target state without code changes —
-    only this root changes.
-    """
-
-    lake_root: Path
-
-    @classmethod
-    def from_env(cls, env: dict[str, str] | None = None) -> RunPaths:
-        env = env if env is not None else dict(os.environ)
-        root = env.get("CLIMATE_RISK_LAKE_ROOT", str(REPO_ROOT / "data" / "lake"))
-        return cls(lake_root=Path(root))
-
-    @property
-    def raw(self) -> Path:
-        return self.lake_root / "raw"
-
-    @property
-    def bronze(self) -> Path:
-        return self.lake_root / "bronze"
-
-    @property
-    def silver(self) -> Path:
-        return self.lake_root / "silver"
-
-    @property
-    def gold(self) -> Path:
-        return self.lake_root / "gold"
-
-    def ensure_zones(self) -> None:
-        for zone in (self.raw, self.bronze, self.silver, self.gold):
-            zone.mkdir(parents=True, exist_ok=True)
 
 
 def load_source_registry(path: Path | None = None) -> dict[str, SourceConfig]:

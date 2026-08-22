@@ -1,7 +1,12 @@
 """Source adapter interface (01_data_ingestion.md section 10).
 
 Pipeline orchestration is source-agnostic; source-specific assumptions
-(column names, units, quirks) live inside concrete adapters.
+(column names, units, quirks) live inside concrete adapters. Adapters fetch
+and parse only -- they never touch storage. `fetch()` returns raw bytes in
+memory; the orchestrator (`climate_risk.ingestion.pipeline.run_ingest`)
+decides where those bytes get persisted via a `StorageBackend`. This split
+is what makes an adapter backend-agnostic: nothing here can accidentally
+run a local filesystem operation against a remote URI (ADR 0003).
 """
 
 from __future__ import annotations
@@ -9,7 +14,6 @@ from __future__ import annotations
 import hashlib
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Protocol
 
 import httpx
@@ -24,13 +28,13 @@ class SourceAdapter(Protocol):
     source_name: str
     parser_version: str
 
-    def fetch(self, *, dest_dir: Path) -> RawArtifact: ...
+    def fetch(self) -> tuple[RawArtifact, bytes]: ...
 
     def validate_transport(self, artifact: RawArtifact) -> ValidationReport: ...
 
-    def fingerprint_schema(self, artifact: RawArtifact) -> str: ...
+    def fingerprint_schema(self, artifact: RawArtifact, raw_bytes: bytes) -> str: ...
 
-    def standardise(self, artifact: RawArtifact) -> pd.DataFrame: ...
+    def standardise(self, artifact: RawArtifact, raw_bytes: bytes) -> pd.DataFrame: ...
 
     def quality_checks(self, frame: pd.DataFrame) -> ValidationReport: ...
 
@@ -48,24 +52,22 @@ class HttpSourceAdapter(ABC):
     parser_version: str
     source_url: str
 
-    def fetch(self, *, dest_dir: Path) -> RawArtifact:
-        dest_dir.mkdir(parents=True, exist_ok=True)
+    def fetch(self) -> tuple[RawArtifact, bytes]:
         response = self._download()
-        payload_path = dest_dir / f"{self.source_name}.payload"
-        payload_path.write_bytes(response.content)
-        sha256 = hashlib.sha256(response.content).hexdigest()
-        return RawArtifact(
+        content = response.content
+        sha256 = hashlib.sha256(content).hexdigest()
+        artifact = RawArtifact(
             source_name=self.source_name,
             source_url=self.source_url,
             retrieved_at_utc=datetime.now(UTC),
             http_status=response.status_code,
             etag=response.headers.get("etag"),
             last_modified=response.headers.get("last-modified"),
-            content_length=len(response.content),
+            content_length=len(content),
             sha256=sha256,
             content_type=response.headers.get("content-type"),
-            payload_path=str(payload_path),
         )
+        return artifact, content
 
     @abstractmethod
     def _download(self) -> httpx.Response:
@@ -103,13 +105,13 @@ class HttpSourceAdapter(ABC):
             )
         return ValidationReport(events=events)
 
-    def fingerprint_schema(self, artifact: RawArtifact) -> str:
-        frame = self.standardise(artifact)
+    def fingerprint_schema(self, artifact: RawArtifact, raw_bytes: bytes) -> str:
+        frame = self.standardise(artifact, raw_bytes)
         column_signature = "|".join(f"{c}:{frame[c].dtype}" for c in sorted(frame.columns))
         return hashlib.sha256(column_signature.encode("utf-8")).hexdigest()
 
     @abstractmethod
-    def standardise(self, artifact: RawArtifact) -> pd.DataFrame:
+    def standardise(self, artifact: RawArtifact, raw_bytes: bytes) -> pd.DataFrame:
         raise NotImplementedError
 
     @abstractmethod
