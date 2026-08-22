@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "SemanticModel",
+    "displayName": "ClimateTransitionRisk"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "8f2a1c3d-5e6f-4a7b-9c8d-1e2f3a4b5c6d"
+  }
+}

@@ -1,0 +1,25 @@
+model Model
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: en-US
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+annotation PBI_QueryOrder = ["GoldBiFolderPath","country_overview","country_timeseries","risk_components","scenario_quantiles","backtest_metrics","energy_indicators","regime_diagnostics","run_metadata","dim_year"]
+
+annotation __PBI_TimeIntelligenceEnabled = 0
+
+ref table country_overview
+ref table country_timeseries
+ref table risk_components
+ref table scenario_quantiles
+ref table backtest_metrics
+ref table energy_indicators
+ref table regime_diagnostics
+ref table run_metadata
+ref table dim_year
+
+ref expression GoldBiFolderPath
+
+ref cultureInfo en-US

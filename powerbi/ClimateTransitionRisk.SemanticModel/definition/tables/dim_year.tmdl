@@ -1,0 +1,23 @@
+table dim_year
+	lineageTag: 9e6c0e2a-2b7a-4a3a-8a1e-6e6f7d9a1c01
+
+	column year
+		dataType: int64
+		lineageTag: 9e6c0e2a-2b7a-4a3a-8a1e-6e6f7d9a1c02
+		summarizeBy: none
+		sourceColumn: year
+
+		annotation SummarizationSetBy = Automatic
+
+	partition dim_year = calculated
+		mode: import
+		source =
+				DISTINCT (
+					UNION (
+						SELECTCOLUMNS ( 'country_timeseries', "year", 'country_timeseries'[year] ),
+						SELECTCOLUMNS ( 'energy_indicators', "year", 'energy_indicators'[year] ),
+						SELECTCOLUMNS ( 'regime_diagnostics', "year", 'regime_diagnostics'[as_of_year] )
+					)
+				)
+
+	annotation PBI_ResultType = Table

@@ -1,0 +1,213 @@
+table run_metadata
+	lineageTag: b69461c6-a705-45d4-b4ab-24d1e2177a02
+
+	column run_id
+		dataType: string
+		lineageTag: c452c362-1e3c-40c2-aeda-e54ba4c0e765
+		summarizeBy: none
+		sourceColumn: run_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column started_at
+		dataType: string
+		lineageTag: 25d1c025-062c-4c9f-a2ed-eb18c40fd48c
+		summarizeBy: none
+		sourceColumn: started_at
+
+		annotation SummarizationSetBy = Automatic
+
+	column completed_at
+		dataType: string
+		lineageTag: 38e36ac9-e6bf-4519-99bc-85087a991d4f
+		summarizeBy: none
+		sourceColumn: completed_at
+
+		annotation SummarizationSetBy = Automatic
+
+	column generated_at
+		dataType: string
+		lineageTag: 45969a01-a434-4403-91ae-5218740675ce
+		summarizeBy: none
+		sourceColumn: generated_at
+
+		annotation SummarizationSetBy = Automatic
+
+	column publish_status
+		dataType: string
+		lineageTag: f83aef8f-9a23-40e9-8c33-b288a4b2ad10
+		summarizeBy: none
+		sourceColumn: publish_status
+
+		annotation SummarizationSetBy = Automatic
+
+	column active_score_version
+		dataType: string
+		lineageTag: 12132cda-600a-4a8d-b51f-384d2892a3a3
+		summarizeBy: none
+		sourceColumn: active_score_version
+
+		annotation SummarizationSetBy = Automatic
+
+	column component_version
+		dataType: string
+		lineageTag: 66d7b828-55b5-40e2-9c46-91ce1eb159ef
+		summarizeBy: none
+		sourceColumn: component_version
+
+		annotation SummarizationSetBy = Automatic
+
+	column weights_version
+		dataType: string
+		lineageTag: 78c0b97c-2183-4bf1-819c-50f551cd4524
+		summarizeBy: none
+		sourceColumn: weights_version
+
+		annotation SummarizationSetBy = Automatic
+
+	column production_scenario_method
+		dataType: string
+		lineageTag: b15bea99-1988-4d75-a0e7-d84e7f15b60c
+		summarizeBy: none
+		sourceColumn: production_scenario_method
+
+		annotation SummarizationSetBy = Automatic
+
+	column git_sha
+		dataType: string
+		lineageTag: 51d39326-0d39-48dc-a73d-b373b63b404b
+		summarizeBy: none
+		sourceColumn: git_sha
+
+		annotation SummarizationSetBy = Automatic
+
+	column image_ref
+		dataType: string
+		lineageTag: eab65f08-4d56-4643-a3c8-e8c8cf80b6ac
+		summarizeBy: none
+		sourceColumn: image_ref
+
+		annotation SummarizationSetBy = Automatic
+
+	column image_digest
+		dataType: string
+		lineageTag: cf150dcc-56ed-4348-b0d0-030aee197a53
+		summarizeBy: none
+		sourceColumn: image_digest
+
+		annotation SummarizationSetBy = Automatic
+
+	column config_hash
+		dataType: string
+		lineageTag: 12ee56c6-c897-4187-af1d-0226066fb2d9
+		summarizeBy: none
+		sourceColumn: config_hash
+
+		annotation SummarizationSetBy = Automatic
+
+	column azure_job_execution_id
+		dataType: string
+		lineageTag: efc63ca7-f5d3-4fda-8214-5acea9da20bf
+		summarizeBy: none
+		sourceColumn: azure_job_execution_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column transition_silver_path
+		dataType: string
+		lineageTag: 5c6208a5-9bd7-44ba-8701-8839793d36eb
+		summarizeBy: none
+		sourceColumn: transition_silver_path
+
+		annotation SummarizationSetBy = Automatic
+
+	column energy_silver_path
+		dataType: string
+		lineageTag: f341a142-e1b6-47e0-8989-2822ebcc9a91
+		summarizeBy: none
+		sourceColumn: energy_silver_path
+
+		annotation SummarizationSetBy = Automatic
+
+	column transition_snapshot_id
+		dataType: string
+		lineageTag: a85ab1d7-7406-4025-bcfb-ea7e935f3fd7
+		summarizeBy: none
+		sourceColumn: transition_snapshot_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column owid_co2_snapshot_id
+		dataType: string
+		lineageTag: 5da3e503-fd5f-495a-91f3-285620687f64
+		summarizeBy: none
+		sourceColumn: owid_co2_snapshot_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column world_bank_wdi_snapshot_id
+		dataType: string
+		lineageTag: 1687481d-730b-4508-acab-59f0ab8bdb27
+		summarizeBy: none
+		sourceColumn: world_bank_wdi_snapshot_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column owid_energy_snapshot_id
+		dataType: string
+		lineageTag: fd37ec85-f858-43a9-9036-939dbf2b81a2
+		summarizeBy: none
+		sourceColumn: owid_energy_snapshot_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column latest_model_eligible_year
+		dataType: int64
+		lineageTag: e7d73dc9-ee64-4a90-97e0-27e4c1779db3
+		summarizeBy: none
+		sourceColumn: latest_model_eligible_year
+
+		annotation SummarizationSetBy = Automatic
+
+	column latest_model_eligible_year_completeness
+		dataType: double
+		lineageTag: 7a1b6bc8-3280-4c9a-a025-81630b17732d
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: latest_model_eligible_year_completeness
+
+		annotation SummarizationSetBy = Automatic
+
+	column bi_version
+		dataType: string
+		lineageTag: 4fdbe012-603e-489d-9c8f-e17ac839a69c
+		summarizeBy: none
+		sourceColumn: bi_version
+
+		annotation SummarizationSetBy = Automatic
+
+	measure 'Latest Model Year' = MAX ( run_metadata[latest_model_eligible_year] )
+		formatString: 0
+		lineageTag: 6a14c007-3187-497a-b2d7-0124ca4fa07f
+
+	measure 'Latest Successful Run' = MAX ( run_metadata[completed_at] )
+		lineageTag: 61ccfcb3-2a4a-4b76-8845-6401b6fb3285
+
+	measure 'Latest Successful Run Id' = SELECTEDVALUE ( run_metadata[run_id] )
+		lineageTag: 1078c272-0076-4fec-ab0a-825e3b32dbc0
+
+	measure 'Active Score Version' = SELECTEDVALUE ( run_metadata[active_score_version] )
+		lineageTag: 181c1e7e-97b0-4f2d-8ae7-5fc47a65bc77
+
+	measure 'Diagnostic Warning' = "Structural-change diagnostics are not used to select the production forecast."
+		lineageTag: f329c7af-79ed-49d6-8a62-ab479e7f2045
+
+	partition run_metadata = m
+		mode: import
+		source =
+				let
+					Source = Parquet.Document(File.Contents(#"GoldBiFolderPath" & "run_metadata.parquet"))
+				in
+					Source
+
+	annotation PBI_ResultType = Table

@@ -1,0 +1,229 @@
+table backtest_metrics
+	lineageTag: 410a30b4-50ec-441b-a36e-2a1131546941
+
+	column model_variant
+		dataType: string
+		lineageTag: 45e4cdb6-fcf3-417c-b8ca-7d9a1c611cf7
+		summarizeBy: none
+		sourceColumn: model_variant
+
+		annotation SummarizationSetBy = Automatic
+
+	column n_splits
+		dataType: double
+		lineageTag: ed1c8015-85cd-4c85-928d-e351389adcfd
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: n_splits
+
+		annotation SummarizationSetBy = Automatic
+
+	column mae
+		dataType: double
+		lineageTag: 33d7a4ae-e7fb-4c9d-a396-53b625c39b90
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: mae
+
+		annotation SummarizationSetBy = Automatic
+
+	column rmse
+		dataType: double
+		lineageTag: c863b7ac-ba4f-493b-aab2-ded8b491cc87
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: rmse
+
+		annotation SummarizationSetBy = Automatic
+
+	column median_ae
+		dataType: double
+		lineageTag: 339a886f-fc80-4c97-bc6e-f8f7df7fc05b
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: median_ae
+
+		annotation SummarizationSetBy = Automatic
+
+	column coverage_90
+		dataType: double
+		lineageTag: 2d15f684-3c60-4309-8b7f-a8c581222050
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: coverage_90
+
+		annotation SummarizationSetBy = Automatic
+
+	column mean_interval_width_90
+		dataType: double
+		lineageTag: e87890d5-21c0-46ab-bfcd-fc441ea006bb
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: mean_interval_width_90
+
+		annotation SummarizationSetBy = Automatic
+
+	column metric_grain
+		dataType: string
+		lineageTag: 14b3e564-6e13-4aa5-8ef4-3708ac979960
+		summarizeBy: none
+		sourceColumn: metric_grain
+
+		annotation SummarizationSetBy = Automatic
+
+	column nominal_coverage_90
+		dataType: double
+		lineageTag: b9749d03-536c-4143-a064-6529c0b47a25
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: nominal_coverage_90
+
+		annotation SummarizationSetBy = Automatic
+
+	column calibration_gap_90
+		dataType: double
+		lineageTag: 1699ded6-e73d-4b75-8c7f-d6520d3540cf
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: calibration_gap_90
+
+		annotation SummarizationSetBy = Automatic
+
+	column absolute_error
+		dataType: double
+		lineageTag: 1473637d-983f-44f7-8792-20c2e97f2917
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: absolute_error
+
+		annotation SummarizationSetBy = Automatic
+
+	column actual
+		dataType: double
+		lineageTag: c7fb2404-1cf0-45b9-b093-9ee6dcb46b77
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: actual
+
+		annotation SummarizationSetBy = Automatic
+
+	column country_iso3
+		dataType: string
+		lineageTag: 6116ce6c-f05d-45a5-a061-68b8b8c3abf3
+		summarizeBy: none
+		sourceColumn: country_iso3
+
+		annotation SummarizationSetBy = Automatic
+
+	column covered_90
+		dataType: string
+		lineageTag: 66b4a29a-1926-4a65-9d3e-6b7218ce2caf
+		summarizeBy: none
+		sourceColumn: covered_90
+
+		annotation SummarizationSetBy = Automatic
+
+	column forecast_p05
+		dataType: double
+		lineageTag: 75bb00a1-5958-4e71-a128-fafa2a11ee65
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: forecast_p05
+
+		annotation SummarizationSetBy = Automatic
+
+	column forecast_p50
+		dataType: double
+		lineageTag: ac82b3a5-2394-4a2a-b9ac-798ba2f8a795
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: forecast_p50
+
+		annotation SummarizationSetBy = Automatic
+
+	column forecast_p95
+		dataType: double
+		lineageTag: 36c3a289-3f57-4d17-a0a3-4c68f7228b55
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: forecast_p95
+
+		annotation SummarizationSetBy = Automatic
+
+	column horizon_years
+		dataType: double
+		lineageTag: b4f1cdd1-3ddb-4d39-9e8c-bee85fa0e949
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: horizon_years
+
+		annotation SummarizationSetBy = Automatic
+
+	column interval_width_90
+		dataType: double
+		lineageTag: 36e1033d-0ad6-4a43-afb1-5dbedfc8bf1c
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: interval_width_90
+
+		annotation SummarizationSetBy = Automatic
+
+	column origin_year
+		dataType: double
+		lineageTag: f9d0496c-16e7-4873-b884-68becdb6cc68
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: origin_year
+
+		annotation SummarizationSetBy = Automatic
+
+	column target_year
+		dataType: double
+		lineageTag: 79699c82-ab88-4855-b23f-4c964b650e6b
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: target_year
+
+		annotation SummarizationSetBy = Automatic
+
+	column production_model_variant
+		dataType: string
+		lineageTag: c4a23807-19d8-4211-b6c9-46c2eee9be9b
+		summarizeBy: none
+		sourceColumn: production_model_variant
+
+		annotation SummarizationSetBy = Automatic
+
+	column bi_version
+		dataType: string
+		lineageTag: 57de2b4d-d0d5-4f42-a4b2-28c7d7604820
+		summarizeBy: none
+		sourceColumn: bi_version
+
+		annotation SummarizationSetBy = Automatic
+
+	measure 'Backtest MAE' = AVERAGE ( backtest_metrics[mae] )
+		formatString: 0.000
+		lineageTag: 60349bf4-ea2f-43fe-b3c4-e5f9ecfcd1bd
+
+	measure 'Interval Coverage' = AVERAGE ( backtest_metrics[coverage_90] )
+		formatString: 0%
+		lineageTag: c7f94760-e6e8-4591-a538-97da125d709b
+
+	measure 'Calibration Gap' = AVERAGE ( backtest_metrics[calibration_gap_90] )
+		formatString: 0%
+		lineageTag: a4a420a4-beca-4de2-9b52-f6e7b5c3d554
+
+	measure 'Mean Interval Width 90' = AVERAGE ( backtest_metrics[mean_interval_width_90] )
+		formatString: 0.000
+		lineageTag: 37d1838f-0186-4749-82c2-0ba6ab40e498
+
+	partition backtest_metrics = m
+		mode: import
+		source =
+				let
+					Source = Parquet.Document(File.Contents(#"GoldBiFolderPath" & "backtest_metrics.parquet"))
+				in
+					Source
+
+	annotation PBI_ResultType = Table

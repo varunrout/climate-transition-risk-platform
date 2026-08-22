@@ -1,0 +1,206 @@
+table regime_diagnostics
+	lineageTag: 5e177f02-f2db-4c39-9635-14687b42ff55
+
+	column country_iso3
+		dataType: string
+		lineageTag: 34526a19-6753-46f3-9b6a-702dfb57e2ac
+		summarizeBy: none
+		sourceColumn: country_iso3
+
+		annotation SummarizationSetBy = Automatic
+
+	column series_name
+		dataType: string
+		lineageTag: 3c3ffc65-4c19-4abe-9b8c-127faee52797
+		summarizeBy: none
+		sourceColumn: series_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column as_of_year
+		dataType: int64
+		lineageTag: c6ce988d-91e2-4d40-8d88-eafa71723831
+		summarizeBy: none
+		sourceColumn: as_of_year
+
+		annotation SummarizationSetBy = Automatic
+
+	column latest_regime_start_year
+		dataType: int64
+		lineageTag: 7546d0b6-ae82-486f-86f9-0aa5ac8c74b9
+		summarizeBy: none
+		sourceColumn: latest_regime_start_year
+
+		annotation SummarizationSetBy = Automatic
+
+	column years_in_current_regime
+		dataType: int64
+		lineageTag: 93d23c75-934c-4c12-bdb4-37b9b2f8ab33
+		summarizeBy: none
+		sourceColumn: years_in_current_regime
+
+		annotation SummarizationSetBy = Automatic
+
+	column break_count
+		dataType: int64
+		lineageTag: 3c1baeb9-36db-42b6-ad29-781974f77987
+		summarizeBy: none
+		sourceColumn: break_count
+
+		annotation SummarizationSetBy = Automatic
+
+	column strongest_break_year
+		dataType: double
+		lineageTag: 12547032-7f00-458e-a989-7d95acfe2f54
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: strongest_break_year
+
+		annotation SummarizationSetBy = Automatic
+
+	column strongest_break_strength
+		dataType: double
+		lineageTag: 6084a8fa-35b2-4838-8c7a-5770024ee77a
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: strongest_break_strength
+
+		annotation SummarizationSetBy = Automatic
+
+	column pre_break_slope
+		dataType: double
+		lineageTag: a127da64-fb7e-4bdd-8d5c-85c44c3f383f
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: pre_break_slope
+
+		annotation SummarizationSetBy = Automatic
+
+	column post_break_slope
+		dataType: double
+		lineageTag: daa18bd2-d29f-4bb9-9253-d711d568e254
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: post_break_slope
+
+		annotation SummarizationSetBy = Automatic
+
+	column slope_delta
+		dataType: double
+		lineageTag: 22e58f4f-f510-40a9-b041-ae9e8a5287fd
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: slope_delta
+
+		annotation SummarizationSetBy = Automatic
+
+	column regime_direction
+		dataType: string
+		lineageTag: 69921189-8062-4deb-9bf8-3940dd41eb6c
+		summarizeBy: none
+		sourceColumn: regime_direction
+
+		annotation SummarizationSetBy = Automatic
+
+	column regime_confidence
+		dataType: double
+		lineageTag: b264fe7d-28a3-4b7b-9ca5-2133e48fa080
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: regime_confidence
+
+		annotation SummarizationSetBy = Automatic
+
+	column current_regime_label
+		dataType: string
+		lineageTag: 1eebe39c-c079-4c37-b57b-a73c90bf9c6c
+		summarizeBy: none
+		sourceColumn: current_regime_label
+
+		annotation SummarizationSetBy = Automatic
+
+	column break_method
+		dataType: string
+		lineageTag: 1a9b22fe-68d4-489a-a72d-c9e2ca62dbf5
+		summarizeBy: none
+		sourceColumn: break_method
+
+		annotation SummarizationSetBy = Automatic
+
+	column break_version
+		dataType: string
+		lineageTag: 708152cf-faa2-422b-a150-faa43f9efc97
+		summarizeBy: none
+		sourceColumn: break_version
+
+		annotation SummarizationSetBy = Automatic
+
+	column country_name
+		dataType: string
+		lineageTag: b65ff5e6-e719-4579-a13f-bb023b706293
+		summarizeBy: none
+		sourceColumn: country_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column region
+		dataType: string
+		lineageTag: a01c61db-da8d-4abc-8917-3876d07f3352
+		summarizeBy: none
+		sourceColumn: region
+
+		annotation SummarizationSetBy = Automatic
+
+	column income_group
+		dataType: string
+		lineageTag: fe5174bb-85ea-4a5c-a1db-9b71f5847420
+		summarizeBy: none
+		sourceColumn: income_group
+
+		annotation SummarizationSetBy = Automatic
+
+	column diagnostic_status
+		dataType: string
+		lineageTag: 48bc5694-28b6-4024-bb99-f8d3f594ea63
+		summarizeBy: none
+		sourceColumn: diagnostic_status
+
+		annotation SummarizationSetBy = Automatic
+
+	column used_in_production_score
+		dataType: boolean
+		lineageTag: 36b00ed1-ee9d-4867-aa55-cc12fee26549
+		summarizeBy: none
+		sourceColumn: used_in_production_score
+
+		annotation SummarizationSetBy = Automatic
+
+	column used_in_production_scenario
+		dataType: boolean
+		lineageTag: 0bd9e89a-6182-480f-a6a8-585d9095cb70
+		summarizeBy: none
+		sourceColumn: used_in_production_scenario
+
+		annotation SummarizationSetBy = Automatic
+
+	column bi_version
+		dataType: string
+		lineageTag: 322db022-723f-4b78-be22-b5bc26e2a416
+		summarizeBy: none
+		sourceColumn: bi_version
+
+		annotation SummarizationSetBy = Automatic
+
+	measure 'Slope Delta' = AVERAGE ( regime_diagnostics[slope_delta] )
+		formatString: 0.000
+		lineageTag: e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b
+
+	partition regime_diagnostics = m
+		mode: import
+		source =
+				let
+					Source = Parquet.Document(File.Contents(#"GoldBiFolderPath" & "regime_diagnostics.parquet"))
+				in
+					Source
+
+	annotation PBI_ResultType = Table

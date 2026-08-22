@@ -1,0 +1,456 @@
+table country_overview
+	lineageTag: e53fd1ae-6690-4582-8cc0-868d65de27d1
+
+	column country_iso3
+		dataType: string
+		lineageTag: c1802660-8946-403e-932e-7c6623582743
+		summarizeBy: none
+		sourceColumn: country_iso3
+
+		annotation SummarizationSetBy = Automatic
+
+	column country_name
+		dataType: string
+		lineageTag: 111da0f4-74c0-4c00-a86c-a0014234da63
+		summarizeBy: none
+		sourceColumn: country_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column g20_flag
+		dataType: boolean
+		lineageTag: 80151be8-1cae-412e-9093-ab565ed917cc
+		summarizeBy: none
+		sourceColumn: g20_flag
+
+		annotation SummarizationSetBy = Automatic
+
+	column region
+		dataType: string
+		lineageTag: 74e075be-34fb-490e-ba33-49e4ae1c301e
+		summarizeBy: none
+		sourceColumn: region
+
+		annotation SummarizationSetBy = Automatic
+
+	column income_group
+		dataType: string
+		lineageTag: 23a0b993-243b-49bf-a8bf-0a4863468ec5
+		summarizeBy: none
+		sourceColumn: income_group
+
+		annotation SummarizationSetBy = Automatic
+
+	column valid_from
+		dataType: string
+		lineageTag: fca1be48-7134-4933-805c-b27da9b1f4d5
+		summarizeBy: none
+		sourceColumn: valid_from
+
+		annotation SummarizationSetBy = Automatic
+
+	column valid_to
+		dataType: string
+		lineageTag: 291343db-eb91-44f4-b535-93edf6290c80
+		summarizeBy: none
+		sourceColumn: valid_to
+
+		annotation SummarizationSetBy = Automatic
+
+	column score_version
+		dataType: string
+		lineageTag: abda5525-9128-4f6e-bff8-9b278736d0e5
+		summarizeBy: none
+		sourceColumn: score_version
+
+		annotation SummarizationSetBy = Automatic
+
+	column component_version
+		dataType: string
+		lineageTag: 108268a2-7e10-4423-89d8-cc6d491f5cdb
+		summarizeBy: none
+		sourceColumn: component_version
+
+		annotation SummarizationSetBy = Automatic
+
+	column weights_version
+		dataType: string
+		lineageTag: d79e3ab8-68da-47e3-a30b-b4c7436b7985
+		summarizeBy: none
+		sourceColumn: weights_version
+
+		annotation SummarizationSetBy = Automatic
+
+	column score_total
+		dataType: double
+		lineageTag: ec21b664-0837-475b-acd8-ad2e34321027
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: score_total
+
+		annotation SummarizationSetBy = Automatic
+
+	column score_pace
+		dataType: double
+		lineageTag: a4bf9461-f569-4020-b683-2dc788e12bd8
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: score_pace
+
+		annotation SummarizationSetBy = Automatic
+
+	column score_coupling
+		dataType: double
+		lineageTag: b4bdb290-aabe-4fda-83db-c3d152138180
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: score_coupling
+
+		annotation SummarizationSetBy = Automatic
+
+	column score_volatility
+		dataType: double
+		lineageTag: 007809c2-b520-44a2-b95c-746a67a18fbf
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: score_volatility
+
+		annotation SummarizationSetBy = Automatic
+
+	column score_forward_downside
+		dataType: double
+		lineageTag: 0adbfa21-c52b-4c81-8448-76cd5a8390bf
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: score_forward_downside
+
+		annotation SummarizationSetBy = Automatic
+
+	column score_energy
+		dataType: double
+		lineageTag: 1195c761-c2cb-4225-bf98-45aa4b178079
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: score_energy
+
+		annotation SummarizationSetBy = Automatic
+
+	column energy_confidence
+		dataType: double
+		lineageTag: ad0365c9-7093-4f5a-b439-3aa40e83f389
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: energy_confidence
+
+		annotation SummarizationSetBy = Automatic
+
+	column data_confidence_score
+		dataType: double
+		lineageTag: cc1ea22c-ba54-4b14-92f7-6733eb5b6654
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: data_confidence_score
+
+		annotation SummarizationSetBy = Automatic
+
+	column weight_coverage
+		dataType: double
+		lineageTag: 72bc4bb1-2975-46c1-887e-eabd09db1e8f
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: weight_coverage
+
+		annotation SummarizationSetBy = Automatic
+
+	column rank
+		dataType: int64
+		lineageTag: 7ecc7b80-87d6-40ba-87f1-3b6cef8de85b
+		summarizeBy: none
+		sourceColumn: rank
+
+		annotation SummarizationSetBy = Automatic
+
+	column rank_band
+		dataType: string
+		lineageTag: 19ba25b7-0251-499e-9060-67a204831eff
+		summarizeBy: none
+		sourceColumn: rank_band
+
+		annotation SummarizationSetBy = Automatic
+
+	column score_total_v1
+		dataType: double
+		lineageTag: 3837bd42-a7d9-4a25-b430-307974fba9fc
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: score_total_v1
+
+		annotation SummarizationSetBy = Automatic
+
+	column rank_v1
+		dataType: int64
+		lineageTag: f0739082-e3d4-451f-bba8-8ebc9a8b0337
+		summarizeBy: none
+		sourceColumn: rank_v1
+
+		annotation SummarizationSetBy = Automatic
+
+	column latest_transition_year
+		dataType: int64
+		lineageTag: 1109d8df-5dc4-4886-a71f-259f4c6f36b1
+		summarizeBy: none
+		sourceColumn: latest_transition_year
+
+		annotation SummarizationSetBy = Automatic
+
+	column carbon_intensity_gdp
+		dataType: double
+		lineageTag: 4bb2fdba-1b85-4253-a7c0-6b2cb152a0fb
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: carbon_intensity_gdp
+
+		annotation SummarizationSetBy = Automatic
+
+	column co2_per_capita
+		dataType: double
+		lineageTag: 4026f420-2b6c-4634-a9a2-c32706c25cad
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: co2_per_capita
+
+		annotation SummarizationSetBy = Automatic
+
+	column energy_intensity_gdp
+		dataType: double
+		lineageTag: 68fab915-b472-4128-8f22-ac6cfc1f098d
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: energy_intensity_gdp
+
+		annotation SummarizationSetBy = Automatic
+
+	column is_core_complete
+		dataType: boolean
+		lineageTag: 8d4fc85a-ba9c-4752-b6c6-85f9005f5edc
+		summarizeBy: none
+		sourceColumn: is_core_complete
+
+		annotation SummarizationSetBy = Automatic
+
+	column missing_feature_count
+		dataType: int64
+		lineageTag: 9fa4f594-e428-4555-8f44-883aaaace823
+		summarizeBy: none
+		sourceColumn: missing_feature_count
+
+		annotation SummarizationSetBy = Automatic
+
+	column transition_snapshot_id
+		dataType: string
+		lineageTag: 5075f031-66b5-423d-830e-323f3e100599
+		summarizeBy: none
+		sourceColumn: transition_snapshot_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column latest_energy_year
+		dataType: int64
+		lineageTag: 16a2117e-ed76-4ece-b8f1-895d220264ba
+		summarizeBy: none
+		sourceColumn: latest_energy_year
+
+		annotation SummarizationSetBy = Automatic
+
+	column coal_share_elec
+		dataType: double
+		lineageTag: 44234d23-96a9-445f-94e3-ffeb080c6beb
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: coal_share_elec
+
+		annotation SummarizationSetBy = Automatic
+
+	column fossil_share_elec
+		dataType: double
+		lineageTag: d25e5867-7fb2-4cb7-ae98-42c5cfbca6b6
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: fossil_share_elec
+
+		annotation SummarizationSetBy = Automatic
+
+	column low_carbon_share_elec
+		dataType: double
+		lineageTag: 68e999c2-2b22-453d-90f0-4f975e0d5421
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: low_carbon_share_elec
+
+		annotation SummarizationSetBy = Automatic
+
+	column renewables_share_elec
+		dataType: double
+		lineageTag: 803978dc-5b2a-4534-b338-f94e0fba626b
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: renewables_share_elec
+
+		annotation SummarizationSetBy = Automatic
+
+	column transition_velocity
+		dataType: double
+		lineageTag: 57e63ecf-2d4d-43a1-aee1-1132cd09e73c
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: transition_velocity
+
+		annotation SummarizationSetBy = Automatic
+
+	column stalled_transition_residual_pp
+		dataType: double
+		lineageTag: 8cfb17f6-6a3c-4d20-9982-9da65430a12a
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: stalled_transition_residual_pp
+
+		annotation SummarizationSetBy = Automatic
+
+	column active_score_version
+		dataType: string
+		lineageTag: da225faf-31b4-47e0-b284-8b7f156fb25d
+		summarizeBy: none
+		sourceColumn: active_score_version
+
+		annotation SummarizationSetBy = Automatic
+
+	column is_active_score
+		dataType: boolean
+		lineageTag: f2e7ebb8-aff1-4137-9579-bbc670af5333
+		summarizeBy: none
+		sourceColumn: is_active_score
+
+		annotation SummarizationSetBy = Automatic
+
+	column score_delta_v2_minus_v1
+		dataType: double
+		lineageTag: 6e04c5ae-4958-4c39-aa75-a533df3996c4
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: score_delta_v2_minus_v1
+
+		annotation SummarizationSetBy = Automatic
+
+	column rank_delta_v2_minus_v1
+		dataType: int64
+		lineageTag: 4298f5b3-74ff-4877-9791-cb138b635e67
+		summarizeBy: none
+		sourceColumn: rank_delta_v2_minus_v1
+
+		annotation SummarizationSetBy = Automatic
+
+	column risk_segment
+		dataType: string
+		lineageTag: d2818f9a-9a35-4d38-a4a6-8243a31426a1
+		summarizeBy: none
+		sourceColumn: risk_segment
+
+		annotation SummarizationSetBy = Automatic
+
+	column latest_successful_run_id
+		dataType: string
+		lineageTag: 768161b1-a93e-45a4-8fe1-7c62b18557fb
+		summarizeBy: none
+		sourceColumn: latest_successful_run_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column latest_successful_run_completed_at
+		dataType: string
+		lineageTag: fe19cc0b-1f25-4c92-9451-0115867a1663
+		summarizeBy: none
+		sourceColumn: latest_successful_run_completed_at
+
+		annotation SummarizationSetBy = Automatic
+
+	column publish_status
+		dataType: string
+		lineageTag: f7eddf9c-d1e5-4e02-8dc3-3a196bea6b3e
+		summarizeBy: none
+		sourceColumn: publish_status
+
+		annotation SummarizationSetBy = Automatic
+
+	column bi_version
+		dataType: string
+		lineageTag: 7c479741-5434-4c95-a4f6-2dd7452aba9f
+		summarizeBy: none
+		sourceColumn: bi_version
+
+		annotation SummarizationSetBy = Automatic
+
+	measure 'Active Transition Risk Score' = MAX ( country_overview[score_total] )
+		formatString: 0.0
+		lineageTag: 04ce222d-90bf-45f3-a57b-b08e4d5d36fb
+
+	measure 'Country Rank' = MIN ( country_overview[rank] )
+		formatString: 0
+		lineageTag: fb579646-f46a-4dc6-ad37-9295d848f0b8
+
+	measure 'Data Confidence' = MAX ( country_overview[data_confidence_score] )
+		formatString: 0.0
+		lineageTag: d3b51b6d-bef9-4ccc-a7e3-9ae7b9a0f13d
+
+	measure 'Weight Coverage' = MAX ( country_overview[weight_coverage] )
+		formatString: 0%
+		lineageTag: d676ff85-bee3-470d-acc6-3fb8b0aebfa6
+
+	measure 'Score v1' = MAX ( country_overview[score_total_v1] )
+		formatString: 0.0
+		lineageTag: 1306ba2f-543f-4f7a-a813-9928115a47eb
+
+	measure 'Score v2' = MAX ( country_overview[score_total] )
+		formatString: 0.0
+		lineageTag: 34d74efa-4341-44a3-a26f-94ef9e705a71
+
+	measure 'Score Delta' = MAX ( country_overview[score_delta_v2_minus_v1] )
+		formatString: +0.0;-0.0;0.0
+		lineageTag: 2b56ab86-7ec6-426e-89e6-1003260f63a2
+
+	measure 'Rank Delta' = MAX ( country_overview[rank_delta_v2_minus_v1] )
+		formatString: +0;-0;0
+		lineageTag: 8798b951-4c4d-4d8f-9693-490f0567fd1e
+
+	measure 'Selected Country' = SELECTEDVALUE ( country_overview[country_name], "G20 sovereigns" )
+		lineageTag: 81079f7d-bb39-4984-ab0c-05c16d279c9a
+
+	measure 'Clean Electricity Share' = MAX ( country_overview[low_carbon_share_elec] )
+		formatString: 0.0
+		lineageTag: 3f0d4f57-7e78-4a89-9ce0-140597212b0d
+
+	measure 'Fossil Electricity Share' = MAX ( country_overview[fossil_share_elec] )
+		formatString: 0.0
+		lineageTag: c9efa2f6-a33a-46e2-95d4-1d484e9858d7
+
+	measure 'Carbon Intensity' = MAX ( country_overview[carbon_intensity_gdp] )
+		formatString: 0.000000
+		lineageTag: 909b490f-7a0f-4ebc-8969-b5ea4700fe2d
+
+	measure 'Risk Band Colour' = SWITCH (
+			TRUE (),
+			[Active Transition Risk Score] >= 80, "#C0392B",
+			[Active Transition Risk Score] >= 60, "#E67E22",
+			[Active Transition Risk Score] >= 40, "#D4AC0D",
+			"#2E86AB"
+		)
+		lineageTag: 50f95f23-b815-486f-b0da-1fa11845c4e4
+
+	partition country_overview = m
+		mode: import
+		source =
+				let
+					Source = Parquet.Document(File.Contents(#"GoldBiFolderPath" & "country_overview.parquet"))
+				in
+					Source
+
+	annotation PBI_ResultType = Table

@@ -34,3 +34,18 @@ infra/**/*.tfplan
 *.tfvars
 
 .DS_Store
+
+# Power BI Desktop local workspace/cache state -- never committed.
+# The .pbip/.Report/.SemanticModel source files themselves ARE committed;
+# only Desktop's own local scratch/cache/lock state is excluded here.
+powerbi/.pbi/
+powerbi/**/.pbi/
+powerbi/**/*.pbix.lock
+powerbi/**/cache.abf
+powerbi/**/*.tmp
+powerbi/**/~$*
+# Exported PBIX/screenshots are local portfolio artifacts, not committed
+# binaries -- see docs/powerbi/portfolio_story.md for the distribution
+# strategy (GitHub Release, not repository file).
+powerbi/*.pbix
+docs/powerbi/screenshots/*.png

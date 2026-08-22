@@ -1,0 +1,307 @@
+table energy_indicators
+	lineageTag: 17230c33-cad5-4b2d-afa9-632c2c2c0a19
+
+	column country_iso3
+		dataType: string
+		lineageTag: 49722449-8213-40c6-bdca-4a8c2ec8bd8b
+		summarizeBy: none
+		sourceColumn: country_iso3
+
+		annotation SummarizationSetBy = Automatic
+
+	column year
+		dataType: int64
+		lineageTag: 039561f6-eab9-4341-a0c2-304f9ce6eea8
+		summarizeBy: none
+		sourceColumn: year
+
+		annotation SummarizationSetBy = Automatic
+
+	column coal_share_elec
+		dataType: double
+		lineageTag: 5e371813-4ff5-4b68-a5b5-632fac8d0911
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: coal_share_elec
+
+		annotation SummarizationSetBy = Automatic
+
+	column gas_share_elec
+		dataType: double
+		lineageTag: 75a57c27-ee6d-4bc6-8799-a40ec3c3b1aa
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: gas_share_elec
+
+		annotation SummarizationSetBy = Automatic
+
+	column oil_share_elec
+		dataType: double
+		lineageTag: 197808c6-5d42-424d-bd59-eb498b0858dd
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: oil_share_elec
+
+		annotation SummarizationSetBy = Automatic
+
+	column fossil_share_elec
+		dataType: double
+		lineageTag: c7e0b9d3-28ce-499c-bd61-695d4bdb4e30
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: fossil_share_elec
+
+		annotation SummarizationSetBy = Automatic
+
+	column renewables_share_elec
+		dataType: double
+		lineageTag: 7951e3c9-3559-4d4a-8528-440480f9998c
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: renewables_share_elec
+
+		annotation SummarizationSetBy = Automatic
+
+	column low_carbon_share_elec
+		dataType: double
+		lineageTag: b4777fc3-cf86-484f-930c-575c6ba7a381
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: low_carbon_share_elec
+
+		annotation SummarizationSetBy = Automatic
+
+	column nuclear_share_elec
+		dataType: double
+		lineageTag: f15b582a-d8e7-4ad2-abbb-40d340589a5f
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: nuclear_share_elec
+
+		annotation SummarizationSetBy = Automatic
+
+	column solar_share_elec
+		dataType: double
+		lineageTag: a159b0da-f97d-46f2-95d7-691efd5b5d98
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: solar_share_elec
+
+		annotation SummarizationSetBy = Automatic
+
+	column wind_share_elec
+		dataType: double
+		lineageTag: 44ae72b1-7b84-4516-bd42-746ab072e672
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: wind_share_elec
+
+		annotation SummarizationSetBy = Automatic
+
+	column hydro_share_elec
+		dataType: double
+		lineageTag: 98fe1e75-2be2-48cc-9e62-d318b89eea60
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: hydro_share_elec
+
+		annotation SummarizationSetBy = Automatic
+
+	column biofuel_share_elec
+		dataType: double
+		lineageTag: 803be00e-b5e6-4858-b292-5f52e68f90a6
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: biofuel_share_elec
+
+		annotation SummarizationSetBy = Automatic
+
+	column snapshot_set_id
+		dataType: string
+		lineageTag: 23fc33e3-22d3-472a-b742-1b2c1b7b25a6
+		summarizeBy: none
+		sourceColumn: snapshot_set_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column country_name
+		dataType: string
+		lineageTag: c5999cdf-1b82-4200-957d-f84aadd8f18a
+		summarizeBy: none
+		sourceColumn: country_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column region
+		dataType: string
+		lineageTag: d29fbbbd-b7f8-4f56-9e95-fa88da506a7d
+		summarizeBy: none
+		sourceColumn: region
+
+		annotation SummarizationSetBy = Automatic
+
+	column income_group
+		dataType: string
+		lineageTag: 16466b20-5f65-4f62-af6d-12ed2d33bd1d
+		summarizeBy: none
+		sourceColumn: income_group
+
+		annotation SummarizationSetBy = Automatic
+
+	column latest_feature_latest_year
+		dataType: int64
+		lineageTag: 8439107d-c880-491b-8206-cedc3b03a5fe
+		summarizeBy: none
+		sourceColumn: latest_feature_latest_year
+
+		annotation SummarizationSetBy = Automatic
+
+	column latest_feature_trailing_window_years
+		dataType: int64
+		lineageTag: 7f7f1614-bde9-4009-93be-c603fcaaae9c
+		summarizeBy: none
+		sourceColumn: latest_feature_trailing_window_years
+
+		annotation SummarizationSetBy = Automatic
+
+	column latest_feature_sample_size
+		dataType: int64
+		lineageTag: c85dbe07-9bec-4448-9558-863cae4790f7
+		summarizeBy: none
+		sourceColumn: latest_feature_sample_size
+
+		annotation SummarizationSetBy = Automatic
+
+	column latest_feature_coal_share_elec
+		dataType: double
+		lineageTag: 38960a62-106e-4a35-bd43-3fd20e218947
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: latest_feature_coal_share_elec
+
+		annotation SummarizationSetBy = Automatic
+
+	column latest_feature_fossil_share_elec
+		dataType: double
+		lineageTag: dd4e2ae0-f9a8-4b63-9899-46ff46cdfafc
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: latest_feature_fossil_share_elec
+
+		annotation SummarizationSetBy = Automatic
+
+	column latest_feature_renewables_share_elec
+		dataType: double
+		lineageTag: 09e7b622-688f-43b8-8992-3ba59a8c5e8d
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: latest_feature_renewables_share_elec
+
+		annotation SummarizationSetBy = Automatic
+
+	column latest_feature_low_carbon_share_elec
+		dataType: double
+		lineageTag: 2165c75d-9382-4948-94f0-23b90701e5ac
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: latest_feature_low_carbon_share_elec
+
+		annotation SummarizationSetBy = Automatic
+
+	column latest_feature_coal_trend_pp_per_year
+		dataType: double
+		lineageTag: 24fcc04a-601a-44d1-9ae5-f6bc45d65f7a
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: latest_feature_coal_trend_pp_per_year
+
+		annotation SummarizationSetBy = Automatic
+
+	column latest_feature_clean_power_momentum_pp_per_year
+		dataType: double
+		lineageTag: 651ecb2c-57cc-488c-b30f-e337cc12edc8
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: latest_feature_clean_power_momentum_pp_per_year
+
+		annotation SummarizationSetBy = Automatic
+
+	column latest_feature_renewable_buildout_rate_pp_per_year
+		dataType: double
+		lineageTag: fd6cc734-cc87-4c64-9ef6-db03158c4000
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: latest_feature_renewable_buildout_rate_pp_per_year
+
+		annotation SummarizationSetBy = Automatic
+
+	column latest_feature_fossil_persistence_mean_pct
+		dataType: double
+		lineageTag: 6437fc6f-d3b1-4bf1-a395-e869c78f36e7
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: latest_feature_fossil_persistence_mean_pct
+
+		annotation SummarizationSetBy = Automatic
+
+	column latest_feature_transition_velocity
+		dataType: double
+		lineageTag: 67572a81-5051-4362-bfa8-51cd82a9c9fb
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: latest_feature_transition_velocity
+
+		annotation SummarizationSetBy = Automatic
+
+	column latest_feature_stalled_transition_residual_pp
+		dataType: double
+		lineageTag: 1952b1dd-2157-4e2f-9bc6-a6d2e62577d2
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: latest_feature_stalled_transition_residual_pp
+
+		annotation SummarizationSetBy = Automatic
+
+	column latest_feature_coal_share_elec_percentile
+		dataType: double
+		lineageTag: d919cc6f-7939-4f2e-b89b-c08074ac659f
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: latest_feature_coal_share_elec_percentile
+
+		annotation SummarizationSetBy = Automatic
+
+	column latest_feature_low_carbon_share_elec_percentile
+		dataType: double
+		lineageTag: 659c05c6-8dc4-4ca1-ada0-2d55a1311f72
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: latest_feature_low_carbon_share_elec_percentile
+
+		annotation SummarizationSetBy = Automatic
+
+	column bi_version
+		dataType: string
+		lineageTag: 2bba2135-3f23-4a0d-9356-4673707f661c
+		summarizeBy: none
+		sourceColumn: bi_version
+
+		annotation SummarizationSetBy = Automatic
+
+	measure 'Transition Momentum' = AVERAGE ( energy_indicators[latest_feature_clean_power_momentum_pp_per_year] )
+		formatString: 0.00
+		lineageTag: 5285b6e2-bd09-4806-a099-84ec8f43cf36
+
+	measure 'Low Carbon Share' = AVERAGE ( energy_indicators[low_carbon_share_elec] )
+		formatString: 0.0
+		lineageTag: d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a
+
+	partition energy_indicators = m
+		mode: import
+		source =
+				let
+					Source = Parquet.Document(File.Contents(#"GoldBiFolderPath" & "energy_indicators.parquet"))
+				in
+					Source
+
+	annotation PBI_ResultType = Table

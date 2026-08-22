@@ -1,0 +1,180 @@
+table scenario_quantiles
+	lineageTag: 456576f0-8883-415e-9b96-29bb5bbaca43
+
+	column country_iso3
+		dataType: string
+		lineageTag: 60496d3d-7925-41af-88c7-321e49e5688c
+		summarizeBy: none
+		sourceColumn: country_iso3
+
+		annotation SummarizationSetBy = Automatic
+
+	column origin_year
+		dataType: int64
+		lineageTag: 0496db0e-bad0-41cb-bdb6-18606017e9ea
+		summarizeBy: none
+		sourceColumn: origin_year
+
+		annotation SummarizationSetBy = Automatic
+
+	column target_year
+		dataType: int64
+		lineageTag: ccefd942-6e6b-4d81-8483-23e9e0cd7c27
+		summarizeBy: none
+		sourceColumn: target_year
+
+		annotation SummarizationSetBy = Automatic
+
+	column scenario_horizon_years
+		dataType: int64
+		lineageTag: d60b2108-4357-4299-b1d6-d033e9b1137a
+		summarizeBy: none
+		sourceColumn: scenario_horizon_years
+
+		annotation SummarizationSetBy = Automatic
+
+	column scenario_method
+		dataType: string
+		lineageTag: a7b73a83-fea6-4051-968c-162c309e9f81
+		summarizeBy: none
+		sourceColumn: scenario_method
+
+		annotation SummarizationSetBy = Automatic
+
+	column scenario_status
+		dataType: string
+		lineageTag: c8794039-944a-4cf4-8cf1-4abc747c8b57
+		summarizeBy: none
+		sourceColumn: scenario_status
+
+		annotation SummarizationSetBy = Automatic
+
+	column forecast_p05
+		dataType: double
+		lineageTag: 4ae77ec9-b662-4b61-b12d-8aa42823bfa0
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: forecast_p05
+
+		annotation SummarizationSetBy = Automatic
+
+	column forecast_p50
+		dataType: double
+		lineageTag: 1c7ddf20-f0bc-4b6b-97a8-c80137eaf39f
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: forecast_p50
+
+		annotation SummarizationSetBy = Automatic
+
+	column forecast_p95
+		dataType: double
+		lineageTag: dff0cb71-9857-4783-82ff-1b1e5a55bafd
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: forecast_p95
+
+		annotation SummarizationSetBy = Automatic
+
+	column deterministic_baseline
+		dataType: double
+		lineageTag: 42de6595-8449-4022-b629-2a2e02efbce6
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: deterministic_baseline
+
+		annotation SummarizationSetBy = Automatic
+
+	column prob_below_origin_value
+		dataType: double
+		lineageTag: 945b876e-33f2-42f7-a289-da1cb926d96a
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: prob_below_origin_value
+
+		annotation SummarizationSetBy = Automatic
+
+	column simulation_count
+		dataType: int64
+		lineageTag: 6b11e517-3d64-450d-a4be-3342a962e251
+		summarizeBy: none
+		sourceColumn: simulation_count
+
+		annotation SummarizationSetBy = Automatic
+
+	column random_seed
+		dataType: int64
+		lineageTag: da3f8447-da3b-458f-894b-9fe1e5005ad0
+		summarizeBy: none
+		sourceColumn: random_seed
+
+		annotation SummarizationSetBy = Automatic
+
+	column experimental_variant
+		dataType: boolean
+		lineageTag: c9c79b48-dcda-475a-9f74-5c15178054db
+		summarizeBy: none
+		sourceColumn: experimental_variant
+
+		annotation SummarizationSetBy = Automatic
+
+	column bi_version
+		dataType: string
+		lineageTag: 3ff34aba-9344-4670-a9ae-6f0b73494790
+		summarizeBy: none
+		sourceColumn: bi_version
+
+		annotation SummarizationSetBy = Automatic
+
+	column country_name
+		dataType: string
+		lineageTag: e0afa3c1-b3ae-4d56-9a88-1642ddc514f9
+		summarizeBy: none
+		sourceColumn: country_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column region
+		dataType: string
+		lineageTag: cd5ce685-5074-4e2f-a7bd-cc9570bf0cbf
+		summarizeBy: none
+		sourceColumn: region
+
+		annotation SummarizationSetBy = Automatic
+
+	column income_group
+		dataType: string
+		lineageTag: e3f02205-6e72-4798-878a-2b2d46298385
+		summarizeBy: none
+		sourceColumn: income_group
+
+		annotation SummarizationSetBy = Automatic
+
+	measure 'Scenario P5' = MAX ( scenario_quantiles[forecast_p05] )
+		formatString: 0.000000
+		lineageTag: 079d53c3-e2b0-41fb-ac65-4027f5475da6
+
+	measure 'Scenario P50' = MAX ( scenario_quantiles[forecast_p50] )
+		formatString: 0.000000
+		lineageTag: 0b5f190e-39a2-49fa-bc46-3247c8acf3f8
+
+	measure 'Scenario P95' = MAX ( scenario_quantiles[forecast_p95] )
+		formatString: 0.000000
+		lineageTag: d7a8f6b1-1942-4482-beaf-c4024b303b54
+
+	measure 'Scenario Deterministic Baseline' = MAX ( scenario_quantiles[deterministic_baseline] )
+		formatString: 0.000000
+		lineageTag: 841cbdd5-6849-4433-b9dc-0a11f13f3994
+
+	measure 'Production Scenario Label' = "Production forecast: " & SELECTEDVALUE ( scenario_quantiles[scenario_method], "empirical_bootstrap_v1" )
+		lineageTag: fbcaa7fb-7208-405b-8166-1456d3dcb0ee
+
+	partition scenario_quantiles = m
+		mode: import
+		source =
+				let
+					Source = Parquet.Document(File.Contents(#"GoldBiFolderPath" & "scenario_quantiles.parquet"))
+				in
+					Source
+
+	annotation PBI_ResultType = Table

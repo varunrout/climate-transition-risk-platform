@@ -1,0 +1,275 @@
+table country_timeseries
+	lineageTag: b39870f1-1a19-4cb3-b825-ae9e1010eeca
+
+	column country_iso3
+		dataType: string
+		lineageTag: 858dd092-2ad8-461c-b290-8cc603542d6d
+		summarizeBy: none
+		sourceColumn: country_iso3
+
+		annotation SummarizationSetBy = Automatic
+
+	column year
+		dataType: int64
+		lineageTag: 2257472e-1622-4c06-8354-0d7ceb47c70b
+		summarizeBy: none
+		sourceColumn: year
+
+		annotation SummarizationSetBy = Automatic
+
+	column co2_mt
+		dataType: double
+		lineageTag: d023c7c1-9f20-40be-afdb-1092a51aef66
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: co2_mt
+
+		annotation SummarizationSetBy = Automatic
+
+	column real_gdp
+		dataType: double
+		lineageTag: 0f4a6f12-da8c-4347-b316-fc6197cc888c
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: real_gdp
+
+		annotation SummarizationSetBy = Automatic
+
+	column secondary_gdp_owid
+		dataType: double
+		lineageTag: 752d3421-a715-40c6-9e8c-0d92eb9f9e39
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: secondary_gdp_owid
+
+		annotation SummarizationSetBy = Automatic
+
+	column population
+		dataType: double
+		lineageTag: 14339e92-c2b4-497a-8c8b-196d55a707ec
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: population
+
+		annotation SummarizationSetBy = Automatic
+
+	column carbon_intensity_gdp
+		dataType: double
+		lineageTag: 08c32277-6e36-473a-9e39-df5e13494fd9
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: carbon_intensity_gdp
+
+		annotation SummarizationSetBy = Automatic
+
+	column co2_per_capita
+		dataType: double
+		lineageTag: f0a676bb-8363-4ba5-b757-df5165148d66
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: co2_per_capita
+
+		annotation SummarizationSetBy = Automatic
+
+	column energy_intensity_gdp
+		dataType: double
+		lineageTag: 627e724a-4ca3-4ab1-a819-794c58d58ae6
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: energy_intensity_gdp
+
+		annotation SummarizationSetBy = Automatic
+
+	column primary_energy_twh
+		dataType: double
+		lineageTag: 02f7bfef-5144-4d2a-883e-63cc656180a4
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: primary_energy_twh
+
+		annotation SummarizationSetBy = Automatic
+
+	column is_core_complete
+		dataType: boolean
+		lineageTag: bb377c92-9ee7-4769-b713-360b729c3fe0
+		summarizeBy: none
+		sourceColumn: is_core_complete
+
+		annotation SummarizationSetBy = Automatic
+
+	column missing_feature_count
+		dataType: int64
+		lineageTag: 5f6b3753-e234-4f32-ad81-95aded972745
+		summarizeBy: none
+		sourceColumn: missing_feature_count
+
+		annotation SummarizationSetBy = Automatic
+
+	column imputation_mask
+		dataType: string
+		lineageTag: d409cad9-4f73-4091-8e5e-726a8d24d56d
+		summarizeBy: none
+		sourceColumn: imputation_mask
+
+		annotation SummarizationSetBy = Automatic
+
+	column snapshot_set_id
+		dataType: string
+		lineageTag: d91e562f-a58d-4266-9eee-0bb8332ed11d
+		summarizeBy: none
+		sourceColumn: snapshot_set_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column coal_share_elec
+		dataType: double
+		lineageTag: 33670cbe-bd22-42a0-a1ed-e59f88139190
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: coal_share_elec
+
+		annotation SummarizationSetBy = Automatic
+
+	column gas_share_elec
+		dataType: double
+		lineageTag: 36283e48-e4ad-44c4-a722-f52eaf89ad8c
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: gas_share_elec
+
+		annotation SummarizationSetBy = Automatic
+
+	column oil_share_elec
+		dataType: double
+		lineageTag: f9d8427f-6cec-45cf-88c1-1ac3808edcf8
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: oil_share_elec
+
+		annotation SummarizationSetBy = Automatic
+
+	column fossil_share_elec
+		dataType: double
+		lineageTag: 1de97247-f41b-48cf-9372-1954dbe30425
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: fossil_share_elec
+
+		annotation SummarizationSetBy = Automatic
+
+	column renewables_share_elec
+		dataType: double
+		lineageTag: 32205e78-c81c-45cc-abae-0e6f24976439
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: renewables_share_elec
+
+		annotation SummarizationSetBy = Automatic
+
+	column low_carbon_share_elec
+		dataType: double
+		lineageTag: b16a5412-0871-45a0-8c37-15f0f4b59ed0
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: low_carbon_share_elec
+
+		annotation SummarizationSetBy = Automatic
+
+	column nuclear_share_elec
+		dataType: double
+		lineageTag: 3ab0b9b8-a57c-4ba0-ad0c-8c8b4f1018df
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: nuclear_share_elec
+
+		annotation SummarizationSetBy = Automatic
+
+	column solar_share_elec
+		dataType: double
+		lineageTag: 64889cb8-57cb-44ed-bf88-342612339f6d
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: solar_share_elec
+
+		annotation SummarizationSetBy = Automatic
+
+	column wind_share_elec
+		dataType: double
+		lineageTag: 2d5e719c-077b-4b8f-a880-68cfc2f961e7
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: wind_share_elec
+
+		annotation SummarizationSetBy = Automatic
+
+	column hydro_share_elec
+		dataType: double
+		lineageTag: 5e026839-239e-4f78-80ae-bd6204c71d56
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: hydro_share_elec
+
+		annotation SummarizationSetBy = Automatic
+
+	column biofuel_share_elec
+		dataType: double
+		lineageTag: f281ee23-eec8-456f-aa27-addc9c91fccd
+		summarizeBy: none
+		formatString: 0.00#############
+		sourceColumn: biofuel_share_elec
+
+		annotation SummarizationSetBy = Automatic
+
+	column snapshot_set_id_energy
+		dataType: string
+		lineageTag: dafb3433-90ab-4a7b-86d4-11493fb05239
+		summarizeBy: none
+		sourceColumn: snapshot_set_id_energy
+
+		annotation SummarizationSetBy = Automatic
+
+	column country_name
+		dataType: string
+		lineageTag: 017c7a9a-8b29-4865-a32c-3ec34079ae30
+		summarizeBy: none
+		sourceColumn: country_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column region
+		dataType: string
+		lineageTag: 3c340ed7-30c6-4d79-8be1-c615d9ee45b4
+		summarizeBy: none
+		sourceColumn: region
+
+		annotation SummarizationSetBy = Automatic
+
+	column income_group
+		dataType: string
+		lineageTag: 7039c3b1-b29e-4c6b-9162-7fbf7b4c98c7
+		summarizeBy: none
+		sourceColumn: income_group
+
+		annotation SummarizationSetBy = Automatic
+
+	column bi_version
+		dataType: string
+		lineageTag: bf89ce60-f7a4-4967-915c-4d40011db0cf
+		summarizeBy: none
+		sourceColumn: bi_version
+
+		annotation SummarizationSetBy = Automatic
+
+	measure 'Carbon Intensity Trend' = AVERAGE ( country_timeseries[carbon_intensity_gdp] )
+		formatString: 0.000000
+		lineageTag: c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f
+
+	partition country_timeseries = m
+		mode: import
+		source =
+				let
+					Source = Parquet.Document(File.Contents(#"GoldBiFolderPath" & "country_timeseries.parquet"))
+				in
+					Source
+
+	annotation PBI_ResultType = Table

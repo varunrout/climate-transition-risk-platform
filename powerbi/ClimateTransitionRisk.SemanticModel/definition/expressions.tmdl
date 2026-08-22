@@ -1,0 +1,4 @@
+expression GoldBiFolderPath = "C:\Users\USER\Documents\Python Projects\climate-transition-risk-platform\climate-transition-risk\data\lake\gold\bi\" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	lineageTag: 7d3f1a2b-4c5e-4f6a-8b7c-1d2e3f4a5b6c
+
+	annotation PBI_ResultType = Text
