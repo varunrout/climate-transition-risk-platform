@@ -830,6 +830,85 @@ def m7_phase2() -> None:
 
 
 @app.command()
+def m7_phase3(
+    n_simulations: int = typer.Option(
+        5_000, help="Simulation count for each experimental bootstrap scenario."
+    ),
+    random_seed: int = typer.Option(42, help="Deterministic seed for stochastic scenarios."),
+) -> None:
+    """M7 phase 3: regime-aware scenario experiments and decision gate.
+
+    Research-only -- writes evidence under gold/research/m7/phase3/ and does
+    not alter production scenarios, scores, publish manifests, Azure resources,
+    or the scheduled pipeline.
+    """
+    from climate_risk.research.m7_scenarios import run_phase3_experiment
+
+    log = get_logger(stage="m7-phase3")
+    lake = prepare_lake_from_env(log)
+
+    found = _latest_silver_panel(lake)
+    if found is None:
+        typer.echo("no silver panel found; run `climate-risk build-silver` first", err=True)
+        raise typer.Exit(code=1)
+    panel, transition_path = found
+    countries = sorted(load_countries().keys())
+
+    artifacts = run_phase3_experiment(
+        panel,
+        countries=countries,
+        n_simulations=n_simulations,
+        random_seed=random_seed,
+    )
+    scenario_results = artifacts["scenario_method_results"]
+    origin_metrics = artifacts["origin_metrics"]
+    country_metrics = artifacts["country_metrics"]
+    calibration_metrics = artifacts["calibration_metrics"]
+    break_sensitivity = artifacts["break_sensitivity"]
+    recency_vs_regime = artifacts["recency_vs_regime"]
+    conditional_policy = artifacts["conditional_policy"]
+    performance_uncertainty = artifacts["performance_uncertainty"]
+    case_studies = artifacts["case_studies"]
+    decision_raw = artifacts["decision"]
+    assert isinstance(scenario_results, pd.DataFrame)
+    assert isinstance(origin_metrics, pd.DataFrame)
+    assert isinstance(country_metrics, pd.DataFrame)
+    assert isinstance(calibration_metrics, pd.DataFrame)
+    assert isinstance(break_sensitivity, pd.DataFrame)
+    assert isinstance(recency_vs_regime, pd.DataFrame)
+    assert isinstance(conditional_policy, pd.DataFrame)
+    assert isinstance(performance_uncertainty, pd.DataFrame)
+    assert isinstance(case_studies, dict)
+    assert isinstance(decision_raw, dict)
+
+    prefix = "research/m7/phase3"
+    write_parquet(lake.gold, f"{prefix}/scenario_method_results.parquet", scenario_results)
+    write_parquet(lake.gold, f"{prefix}/origin_metrics.parquet", origin_metrics)
+    write_parquet(lake.gold, f"{prefix}/country_metrics.parquet", country_metrics)
+    write_parquet(lake.gold, f"{prefix}/calibration_metrics.parquet", calibration_metrics)
+    write_parquet(lake.gold, f"{prefix}/break_sensitivity.parquet", break_sensitivity)
+    write_parquet(lake.gold, f"{prefix}/recency_vs_regime.parquet", recency_vs_regime)
+    write_parquet(lake.gold, f"{prefix}/conditional_policy.parquet", conditional_policy)
+    write_parquet(lake.gold, f"{prefix}/performance_uncertainty.parquet", performance_uncertainty)
+    write_json(lake.gold, f"{prefix}/case_studies.json", case_studies)
+    decision = dict(decision_raw)
+    decision["inputs"] = {
+        "transition_silver_path": transition_path,
+        "transition_rows": len(panel),
+        "n_simulations": n_simulations,
+        "random_seed": random_seed,
+    }
+    write_json(lake.gold, f"{prefix}/decision.json", decision)
+
+    log.info(
+        "M7 phase 3 scenario experiment complete",
+        scenario_rows=len(scenario_results),
+        decision=decision.get("decision"),
+    )
+    typer.echo(f"M7 phase 3 decision: {decision.get('decision')}")
+
+
+@app.command()
 def backtest(
     n_simulations: int = typer.Option(10_000, help="Bootstrap simulation count per split."),
     random_seed: int = typer.Option(42, help="Seed for reproducibility."),

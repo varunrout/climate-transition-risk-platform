@@ -480,7 +480,21 @@ def method_agreement(breaks: pd.DataFrame) -> pd.DataFrame:
                 ),
             }
         )
-    return pd.DataFrame(rows).sort_values(["series_name", "country_iso3"])
+    columns = [
+        "country_iso3",
+        "series_name",
+        "eligible_methods",
+        "methods_detecting_break",
+        "break_detection_agreement",
+        "modal_break_year",
+        "break_year_agreement_within_1yr",
+        "slope_direction_agreement",
+        "mean_regime_confidence",
+        "method_sensitivity",
+    ]
+    if not rows:
+        return pd.DataFrame(columns=columns)
+    return pd.DataFrame(rows, columns=columns).sort_values(["series_name", "country_iso3"])
 
 
 def method_agreement_by_origin(origin_results: pd.DataFrame) -> pd.DataFrame:
