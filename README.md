@@ -22,10 +22,16 @@ there is not claimed here until it is implemented, tested, and committed.
 | M5 | Transition risk scoring v1 (4 of 5 components), rank stability | **Implemented** |
 | M6 | Ember energy-transition features | Not implemented (source gated `pending_verification`, disabled) |
 | M7 | Regime/structural-break research | Not implemented |
-| M8 | Azure infrastructure (Terraform) | Not implemented — no Azure discovery or `infra/` yet |
+| M8 | Azure infrastructure (Terraform) | **Terraform written, `fmt`/`validate` pass; `plan`/`apply` blocked** — the Azure subscription is disabled for all write operations (billing issue, not a permissions gap). No Azure resource exists. See `docs/finops.md`. |
 | M9 | Power BI semantic layer | Not implemented |
 | M10 | Read-only FastAPI serving layer | Not implemented |
-| M11 | End-to-end `publish` wiring | Not implemented (barrier itself is implemented and tested) |
+| M11 | End-to-end `publish` wiring | **Implemented** — fail-closed, verified on the real CLI path (see `docs/adr/`) |
+
+Production container: **implemented and verified**. `docker build .` produces
+a non-root, multi-stage image; the full `ingest → build-silver → backtest →
+score → publish` chain has been run inside it against a mounted volume and
+live network data, producing output bit-identical to the non-containerized
+run. Not yet pushed to any registry (ACR doesn't exist — see M8).
 
 Ember is disabled in `config/sources.yaml` (`licence_review_status:
 pending_verification`) because its exact licence, attribution wording and
@@ -82,15 +88,45 @@ a complete one.
 `features`/`model` exist as tested library functions
 (`climate_risk.features.decoupling`, `climate_risk.scenarios.engine`) but
 are not yet wired as standalone CLI commands (their logic runs inside
-`backtest` and `score`). `publish` is a CLI command that exists but exits
-with `NotImplementedError` rather than fabricate output — see
-`src/climate_risk/cli.py`.
+`backtest` and `score`).
 
-The fail-closed **publishing barrier** (`src/climate_risk/publishing/barrier.py`)
-is implemented and tested: `latest_successful_run.json` is only ever updated
-by a `SUCCEEDED` run, so a failed or in-progress run can never overwrite the
-previously published release. See `tests/unit/test_publishing_barrier.py`.
-It is not yet wired into the `publish` CLI command.
+`publish` checks the latest ingestion manifests are `ACCEPTED`, a silver
+panel exists, and gold backtest/score outputs exist, then calls the
+fail-closed **publishing barrier** (`src/climate_risk/publishing/barrier.py`):
+`latest_successful_run.json` is only ever updated by a `SUCCEEDED` run, so a
+failed or in-progress run can never overwrite the previously published
+release. Verified on the real CLI path (not just unit tests): deleting
+`gold/backtest_summary.parquet` and running `climate-risk publish` exits 1
+and leaves the pointer file byte-for-byte unchanged. `publish` also writes a
+full evidence manifest to `gold/manifests/<run_id>.json` (source snapshot
+ids/checksums, config hash, country scope, backtest metrics, score version).
+
+## Container image
+
+```bash
+docker build -t climate-risk-pipeline:$(git rev-parse --short HEAD) .
+docker run --rm -v /path/to/lake:/data/lake climate-risk-pipeline:latest run
+```
+
+Multi-stage, non-root, `python:3.12-slim` base, locked production-only deps.
+Verified: the full pipeline chain has been run inside the built image
+against a mounted volume and live network data, producing output
+bit-identical to the non-containerized run (same `snapshot_set_id`, same
+scores). Not yet pushed to any registry — see `infra/` below.
+
+## Azure infrastructure
+
+`infra/` (Terraform) defines a deliberately minimal, low-cost dev
+environment: one resource group, ADLS Gen2 (Standard_LRS), ACR (Basic),
+one Container Apps Environment + one unified Container Apps Job
+(Consumption, scale-to-zero), Log Analytics only, two least-privilege
+managed identities, and a Cost Management budget with 50/80/100% alerts.
+`terraform fmt`/`validate` pass. **`terraform plan`/`apply` are currently
+blocked**: the Azure subscription returns `ReadOnlyDisabledSubscription` on
+every write attempt (confirmed independently via `az provider register`) —
+a billing/reactivation issue, not a permissions gap. No Azure resource for
+this project exists. Full cost breakdown, guardrails, and the resume path
+once the subscription is reactivated: [docs/finops.md](docs/finops.md).
 
 ## Repository layout
 
@@ -114,7 +150,9 @@ tests/
   contracts/      adapter standardisation + quality-check contracts, adversarial fixtures
   integration/    full ingest/silver pipelines against local fixtures (no network required)
 docs/adr/         architectural decision records, including the backtest reproduction finding
-infra/            not yet created — Azure discovery and Terraform are the next milestone
+docs/finops.md    Azure cost design, guardrails, shutdown/recovery runbook
+infra/            Terraform (Azure) -- plan-validated, not yet applied (subscription blocked)
+Dockerfile        production container image (built and smoke-tested locally)
 ```
 
 ## Design source of truth
