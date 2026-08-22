@@ -1,10 +1,13 @@
 # FinOps: cost design, guardrails, and shutdown runbook
 
-**Status: `terraform fmt`/`validate`/`plan` all pass against the live
-subscription (reactivated 2026-08-22). Plan: 16 resources to add, 0 to
-change, 0 to destroy. Not yet applied — awaiting explicit user go-ahead per
-this repo's operating rules. Costs below are estimates from the Terraform
-configuration and public Azure pricing, not measured spend.**
+**Status: DEPLOYED and verified working (2026-08-22).** 16 resources
+applied to `rg-climate-risk-dev` (`uksouth`). A real Container Apps Job
+execution ran the full pipeline end to end against live ADLS Gen2 storage
+and produced correct output (ADR 0005). `trigger_type` remains `Manual` —
+recurring scheduling has not been enabled. Costs below are estimates from
+the Terraform configuration and public Azure pricing; Cost Management's
+`currentSpend` reports £0.00 so far (billing data lags actual usage by
+hours).
 
 ## Target cost
 
@@ -123,42 +126,53 @@ over ZRS/GRS because:
   stdout at the end of `backtest`/`score` are small by construction (3 and
   19 rows respectively) — visibility, not a payload dump.
 
-## Cloud storage I/O — known gap
+## Cloud storage I/O — resolved
 
-`climate_risk.config.loader.RunPaths` and every pipeline stage read/write
-plain local filesystem paths via `pandas.to_parquet`/`read_parquet`. There
-is **no `abfss://` support implemented or tested yet**. The Terraform
-Container Apps Job template sets `CLIMATE_RISK_LAKE_ROOT` to an `abfss://`
-URL so the resource shape is correct once this lands, but running the job
-today would fail at the first file write.
+**Status: implemented and verified against real ADLS Gen2 (ADR 0004, ADR 0005).**
+`climate_risk.storage.LakeStorage` replaced the old `RunPaths` with four
+independently-rooted zone backends (`CLIMATE_RISK_{RAW,BRONZE,SILVER,GOLD}_ROOT`),
+each talking to storage through the `StorageBackend` protocol rather than
+raw `pathlib`. `AzureStorageBackend` (fsspec + adlfs) authenticates via
+`ManagedIdentityCredential(client_id=...)`, selected unambiguously via the
+job's `AZURE_CLIENT_ID` env var — no account key, SAS, or connection
+string anywhere.
 
-To close this gap: add the `adlfs` package (fsspec-compatible ADLS Gen2
-backend), verify `pandas.to_parquet("abfss://...", storage_options=...)`
-works with the job's managed identity, and add an integration test against
-a real (or Azurite-emulated) ADLS Gen2 account.
+A second Azure smoke test (ADR 0005, 2026-08-22) ran the full pipeline —
+ingestion through publish — end to end against the real
+`stclimateriskdev01` account and produced output identical to the local
+baseline: same `snapshot_set_id`, same backtest metrics, same country
+scores. `raw`/`bronze`/`silver`/`gold` all populated correctly; the fail-
+closed publish barrier wrote `latest_successful_run.json` last, after
+verifying its required artifacts existed.
+
+**Known remaining gap, not related to storage:** the published manifest's
+`git_sha` field is `null` when run in the container, because
+`git rev-parse HEAD` has no `.git` directory to read from inside the
+image (correctly excluded via `.dockerignore`). The image tag/digest
+already carry the git SHA and remain the authoritative provenance record;
+fixing the manifest field properly means baking the SHA in as a build-time
+`ARG`/`ENV` instead of a runtime `git` subprocess call.
 
 ## What survives destruction
 
-- **Nothing in Azure exists yet** — the plan has not been applied.
-- Once deployed: `terraform destroy` would delete the storage account (and
-  therefore raw/bronze/silver/gold Parquet + manifests) unless explicitly
-  excluded. All of it is reproducible from: (a) the committed pipeline code
-  and config, and (b) re-running `climate-risk ingest` against the same
-  live public sources (OWID, World Bank) — the only genuinely
-  non-reproducible content is a raw snapshot's *exact bytes* if an upstream
-  source revises its data before a re-fetch, which is precisely why
-  `01_data_ingestion.md`'s manifest/checksum discipline exists.
+- `terraform destroy` would delete the storage account (and therefore
+  raw/bronze/silver/gold Parquet + manifests currently sitting in
+  `stclimateriskdev01`) unless explicitly excluded. All of it is
+  reproducible from: (a) the committed pipeline code and config, and (b)
+  re-running `climate-risk ingest` against the same live public sources
+  (OWID, World Bank) — the only genuinely non-reproducible content is a
+  raw snapshot's *exact bytes* if an upstream source revises its data
+  before a re-fetch, which is precisely why `01_data_ingestion.md`'s
+  manifest/checksum discipline exists.
 - GHCR images are independent of the Azure resource group entirely —
   `terraform destroy` cannot touch them.
 
 ## Shutdown / cost-zero commands
 
-Once resources exist (they do not yet):
-
 ```bash
 # Stop paying for everything project-related, in one step:
 cd infra/environments/dev
-terraform destroy -var="image_tag=<last-deployed-sha>" -var="ghcr_owner=<your-github-username>"
+terraform destroy -var="image_tag=472fd07" -var="ghcr_owner=varunrout"
 ```
 
 There is no per-resource "pause" step to document beyond this — every

@@ -22,7 +22,7 @@ there is not claimed here until it is implemented, tested, and committed.
 | M5 | Transition risk scoring v1 (4 of 5 components), rank stability | **Implemented** |
 | M6 | Ember energy-transition features | Not implemented (source gated `pending_verification`, disabled) |
 | M7 | Regime/structural-break research | Not implemented |
-| M8 | Azure infrastructure (Terraform) | **`fmt`/`validate`/`plan` pass — 16 resources, 0 changes, 0 destroys, <£1/month estimated. Not yet applied** (awaiting go-ahead — real billable resources). See `docs/finops.md`. |
+| M8 | Azure infrastructure (Terraform) | **Deployed and verified.** 16 resources live in `rg-climate-risk-dev` (uksouth). A real Container Apps Job execution ran the full pipeline end to end against live ADLS Gen2 and produced output identical to the local baseline. `trigger_type` is `Manual` — recurring scheduling not yet enabled. See `docs/finops.md`, ADR 0003–0005. |
 | M9 | Power BI semantic layer | Not implemented |
 | M10 | Read-only FastAPI serving layer | Not implemented |
 | M11 | End-to-end `publish` wiring | **Implemented** — fail-closed, verified on the real CLI path (see `docs/adr/`) |
@@ -112,29 +112,31 @@ docker run --rm -v /path/to/lake:/data/lake climate-risk-pipeline:latest run
 ```
 
 Multi-stage, non-root, `python:3.12-slim` base, locked production-only deps.
-Verified: the full pipeline chain has been run inside the built image
-against a mounted volume and live network data, producing output
-bit-identical to the non-containerized run (same `snapshot_set_id`, same
-scores). Not yet pushed to any registry — see `infra/` below.
+Public image on GitHub Container Registry:
+`ghcr.io/varunrout/climate-risk-pipeline:472fd07` (immutable git-SHA tag,
+anonymous-pull verified). Storage is backend-neutral
+(`climate_risk.storage`, see ADR 0004) — the same image runs unchanged
+against a local mounted volume or live Azure Data Lake Storage Gen2.
 
 ## Azure infrastructure
 
 `infra/` (Terraform) defines a deliberately minimal, low-cost dev
-environment: one resource group, ADLS Gen2 (Standard_LRS), one Container
-Apps Environment + one unified Container Apps Job (Consumption,
-scale-to-zero) pulling a **public GitHub Container Registry image** (no
-Azure Container Registry — the image has no secrets/proprietary content,
-so a public image is free and removes a real idle cost with no privacy
-tradeoff), Log Analytics only (0.1GB/day cap, 30-day retention), two
-least-privilege managed identities, and a Cost Management budget with
-50/80/100% alerts.
+environment, **deployed and verified**: one resource group
+(`rg-climate-risk-dev`, `uksouth`), ADLS Gen2 (Standard_LRS, 4 filesystems),
+one Container Apps Environment + one unified Container Apps Job
+(Consumption, scale-to-zero) pulling the public GHCR image above (no
+Azure Container Registry), Log Analytics only (0.1GB/day cap, 30-day
+retention), two least-privilege managed identities (the job's identity
+authenticates to ADLS via `ManagedIdentityCredential` only — no keys/SAS
+anywhere), and a Cost Management budget with 50/80/100% alerts.
 
-`terraform fmt`/`validate`/`plan` all pass against the live subscription
-(reactivated 2026-08-22): **16 resources to add, 0 to change, 0 to
-destroy**, confirmed against an empty subscription. Estimated steady-state
-cost: well under £1/month. **Not yet applied** — awaiting explicit
-go-ahead, per this repo's operating rules on hard-to-reverse/billable
-actions. Full cost breakdown, guardrails, and resume/shutdown commands:
+A real Container Apps Job execution (`job-climate-risk-dev-pipeline-zpj4lut`,
+58s) ran the full pipeline — ingestion → silver → backtest → score →
+publish — end to end against live ADLS Gen2 storage, producing output
+identical to the local baseline (same `snapshot_set_id`, same backtest
+metrics, same country scores; see ADR 0005). `trigger_type` remains
+`Manual` — recurring weekly scheduling has not been enabled. Full cost
+breakdown, guardrails, and resume/shutdown commands:
 [docs/finops.md](docs/finops.md).
 
 ## Repository layout
@@ -151,6 +153,7 @@ src/climate_risk/
   scoring/        transition risk scoring v1 + weight-perturbation sensitivity
   quality/        quality rule registry + publish-gate logic
   publishing/     fail-closed latest_successful_run barrier
+  storage/        backend-neutral local/ADLS Gen2 storage abstraction (ADR 0004)
   observability/  structured logging (structlog)
   regimes/ api/   scaffolded, not yet implemented
 config/           versioned YAML: sources, countries, quality rules
@@ -160,7 +163,7 @@ tests/
   integration/    full ingest/silver pipelines against local fixtures (no network required)
 docs/adr/         architectural decision records, including the backtest reproduction finding
 docs/finops.md    Azure cost design, guardrails, shutdown/recovery runbook
-infra/            Terraform (Azure) -- plan-validated, not yet applied (subscription blocked)
+infra/            Terraform (Azure) -- deployed and verified (rg-climate-risk-dev)
 Dockerfile        production container image (built and smoke-tested locally)
 ```
 
