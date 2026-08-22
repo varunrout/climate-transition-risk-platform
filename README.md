@@ -22,19 +22,20 @@ there is not claimed here until it is implemented, tested, and committed.
 | M5 | Transition risk scoring v1 (4 of 5 components), rank stability | **Implemented** |
 | M6 | Ember energy-transition features | Not implemented (source gated `pending_verification`, disabled) |
 | M7 | Regime/structural-break research | Not implemented |
-| M8 | Azure infrastructure (Terraform) | **Deployed, verified, and running on a recurring schedule.** 16 resources live in `rg-climate-risk-dev` (uksouth). Three real Container Apps Job executions have succeeded end to end against live ADLS Gen2, producing output identical to the local baseline and, since ADR 0006, a real `git_sha` in every published manifest. Weekly schedule: Monday 03:00 UTC. See `docs/finops.md`, ADR 0003–0006. |
+| M8 | Azure runtime | **COMPLETE — production-verified.** 16 Terraform-managed resources (6 top-level Azure service resources plus their sub-resources: filesystems, role assignments, lifecycle policy, budget notifications) live in `rg-climate-risk-dev` (uksouth). Three real Container Apps Job executions have succeeded end to end against live ADLS Gen2, producing output identical to the local baseline and, since ADR 0006, a real `git_sha` in every published manifest. Weekly schedule: Monday 03:00 UTC. See `docs/finops.md`, ADR 0003–0006. |
 | M9 | Power BI semantic layer | Not implemented |
 | M10 | Read-only FastAPI serving layer | Not implemented |
-| M11 | End-to-end `publish` wiring | **Implemented** — fail-closed, verified on the real CLI path (see `docs/adr/`) |
+| M11 | v1 release (data revision analysis, reproducibility test, evidence bundle, governance/hardening) | Not implemented. The fail-closed `publish` barrier itself is implemented and production-verified (a prerequisite for M11, not M11 itself) — see `docs/adr/`. |
 
-Production container: **implemented and verified**. `docker build .` produces
-a non-root, multi-stage image; the full `ingest → build-silver → backtest →
-score → publish` chain has been run inside it against a mounted volume and
-live network data, producing output bit-identical to the non-containerized
-run. Not yet pushed to a registry — the design uses a **public GitHub
-Container Registry** image (no Azure Container Registry at all: the image
-has no secrets/proprietary content, so a public image removes a real idle
-cost with no privacy tradeoff — see `docs/finops.md`).
+Production container: **implemented, pushed, and running in production**.
+`docker build .` produces a non-root, multi-stage image; the full
+`ingest → build-silver → backtest → score → publish` chain has run inside
+it — locally, and for real in Azure — producing identical output each
+time. Published as a **public GitHub Container Registry** image (no Azure
+Container Registry at all: the image has no secrets/proprietary content,
+so a public image removes a real idle cost with no privacy tradeoff — see
+`docs/finops.md`). Current production tag: see "Azure infrastructure"
+below.
 
 Ember is disabled in `config/sources.yaml` (`licence_review_status:
 pending_verification`) because its exact licence, attribution wording and
@@ -113,8 +114,9 @@ docker run --rm -v /path/to/lake:/data/lake climate-risk-pipeline:latest run
 
 Multi-stage, non-root, `python:3.12-slim` base, locked production-only deps.
 Public image on GitHub Container Registry:
-`ghcr.io/varunrout/climate-risk-pipeline:472fd07` (immutable git-SHA tag,
-anonymous-pull verified). Storage is backend-neutral
+`ghcr.io/varunrout/climate-risk-pipeline:6bafc0a` (immutable git-SHA tag,
+anonymous-pull verified; the current Azure production tag — see ADR 0006).
+Storage is backend-neutral
 (`climate_risk.storage`, see ADR 0004) — the same image runs unchanged
 against a local mounted volume or live Azure Data Lake Storage Gen2.
 
