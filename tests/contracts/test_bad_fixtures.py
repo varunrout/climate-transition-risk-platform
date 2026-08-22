@@ -11,21 +11,24 @@ from climate_risk.ingestion.world_bank import WorldBankAdapter
 
 def test_html_error_page_masquerading_as_csv_is_fatal_transport(owid_artifact) -> None:  # noqa: ANN001
     adapter = OwidCo2Adapter()
-    html_artifact = owid_artifact.model_copy(update={"content_type": "text/html; charset=utf-8"})
+    artifact, _raw_bytes = owid_artifact
+    html_artifact = artifact.model_copy(update={"content_type": "text/html; charset=utf-8"})
     report = adapter.validate_transport(html_artifact)
     assert report.has_fatal
 
 
 def test_zero_byte_payload_is_fatal_transport(owid_artifact) -> None:  # noqa: ANN001
     adapter = OwidCo2Adapter()
-    empty_artifact = owid_artifact.model_copy(update={"content_length": 0})
+    artifact, _raw_bytes = owid_artifact
+    empty_artifact = artifact.model_copy(update={"content_length": 0})
     report = adapter.validate_transport(empty_artifact)
     assert report.has_fatal
 
 
 def test_non_200_status_is_fatal_transport(owid_artifact) -> None:  # noqa: ANN001
     adapter = OwidCo2Adapter()
-    error_artifact = owid_artifact.model_copy(update={"http_status": 503})
+    artifact, _raw_bytes = owid_artifact
+    error_artifact = artifact.model_copy(update={"http_status": 503})
     report = adapter.validate_transport(error_artifact)
     assert report.has_fatal
 

@@ -6,7 +6,8 @@ from climate_risk.ingestion.owid import OwidCo2Adapter
 
 def test_standardise_filters_to_g20_and_drops_world_aggregate(owid_artifact) -> None:  # noqa: ANN001
     adapter = OwidCo2Adapter()
-    frame = adapter.standardise(owid_artifact)
+    artifact, raw_bytes = owid_artifact
+    frame = adapter.standardise(artifact, raw_bytes)
 
     assert set(frame["country_iso3"]) == {"USA", "CHN", "DEU"}
     assert "OWID_WRL" not in set(frame["country_iso3"])  # aggregate must not leak in
@@ -14,14 +15,16 @@ def test_standardise_filters_to_g20_and_drops_world_aggregate(owid_artifact) -> 
 
 def test_no_duplicate_country_year_keys(owid_artifact) -> None:  # noqa: ANN001
     adapter = OwidCo2Adapter()
-    frame = adapter.standardise(owid_artifact)
+    artifact, raw_bytes = owid_artifact
+    frame = adapter.standardise(artifact, raw_bytes)
     report = adapter.quality_checks(frame)
     assert report.by_severity(QualitySeverity.FATAL) == []
 
 
 def test_missing_gdp_in_latest_year_is_warn_not_silent(owid_artifact) -> None:  # noqa: ANN001
     adapter = OwidCo2Adapter()
-    frame = adapter.standardise(owid_artifact)
+    artifact, raw_bytes = owid_artifact
+    frame = adapter.standardise(artifact, raw_bytes)
     report = adapter.quality_checks(frame)
     gdp_warnings = [
         e for e in report.by_severity(QualitySeverity.WARN) if e.rule_id == "DQ-GDP-020"
