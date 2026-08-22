@@ -1,10 +1,10 @@
 """climate-risk CLI entrypoint.
 
-Milestone status (see README.md for the authoritative table): `ingest` is
-implemented for OWID and World Bank (M1). `build-silver`, `features`,
-`model`, `backtest`, `score`, `publish` are not yet implemented and exit
-with a clear NotImplementedError rather than pretending to run. `run`
-chains whichever stages exist.
+Milestone status (see README.md for the authoritative table): `ingest` (M1)
+and `build-silver` (M2) are implemented. `features`, `model`, `backtest`,
+`score`, `publish` are not yet implemented and exit with a clear
+NotImplementedError rather than pretending to run. `run` chains whichever
+stages exist.
 """
 
 from __future__ import annotations
@@ -15,6 +15,7 @@ import structlog
 import typer
 
 from climate_risk.config.loader import RunPaths, load_countries, load_source_registry
+from climate_risk.contracts.models import QualitySeverity
 from climate_risk.contracts.run import PipelineRun
 from climate_risk.observability.logging import configure_logging, get_logger
 
@@ -101,9 +102,46 @@ def ingest(
 
 
 @app.command()
-def build_silver() -> None:
-    """Not yet implemented (M2)."""
-    _not_implemented("build-silver", milestone="M2")
+def build_silver(
+    lake_root: str | None = typer.Option(None, help="Override the local lake root."),
+) -> None:
+    """Build dim_country + fact_country_year_transition from the latest bronze snapshots."""
+    from climate_risk.config.loader import load_countries
+    from climate_risk.transforms.silver import (
+        build_dim_country,
+        build_silver_panel,
+        latest_complete_common_year,
+    )
+    from climate_risk.transforms.writer import write_dim_country, write_fact_country_year_transition
+
+    log = get_logger(stage="build-silver")
+    paths = RunPaths.from_env({"CLIMATE_RISK_LAKE_ROOT": lake_root} if lake_root else {})
+    paths.ensure_zones()
+
+    panel, snapshot_set_id, report = build_silver_panel(paths)
+    if report.has_fatal:
+        for event in report.by_severity(QualitySeverity.FATAL):
+            log.error("silver build blocked", rule_id=event.rule_id, message=event.message)
+        raise typer.Exit(code=1)
+
+    for event in report.events:
+        log.warning("quality event", rule_id=event.rule_id, message=event.message)
+
+    write_dim_country(build_dim_country(), paths=paths)
+    write_fact_country_year_transition(panel, snapshot_set_id=snapshot_set_id, paths=paths)
+
+    countries = set(load_countries().keys())
+    eligible_year = latest_complete_common_year(panel, countries=countries)
+    log.info(
+        "silver panel built",
+        row_count=len(panel),
+        snapshot_set_id=snapshot_set_id,
+        latest_model_eligible_year=eligible_year,
+    )
+    typer.echo(
+        f"{len(panel)} rows, snapshot_set_id={snapshot_set_id}, "
+        f"latest model-eligible year={eligible_year}"
+    )
 
 
 @app.command()
@@ -138,11 +176,12 @@ def publish() -> None:
 
 @app.command()
 def run() -> None:
-    """Run every implemented stage in order. Currently: ingest only."""
+    """Run every implemented stage in order. Currently: ingest, build-silver."""
     ingest(source=None, lake_root=None)
+    build_silver(lake_root=None)
     typer.echo(
-        "Stages build-silver/features/model/backtest/score/publish are not yet "
-        "implemented; run stopped after ingest. See README.md milestone table.",
+        "Stages features/model/backtest/score/publish are not yet implemented; "
+        "run stopped after build-silver. See README.md milestone table.",
         err=True,
     )
 
