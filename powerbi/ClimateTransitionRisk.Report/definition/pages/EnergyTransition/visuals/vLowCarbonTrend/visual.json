@@ -1,0 +1,54 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.4.0/schema.json",
+  "name": "vLowCarbonTrend",
+  "position": {
+    "x": 20,
+    "y": 360,
+    "z": 0,
+    "width": 600,
+    "height": 300
+  },
+  "visual": {
+    "visualType": "lineChart",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "energy_indicators"
+                    }
+                  },
+                  "Property": "year"
+                }
+              },
+              "queryRef": "energy_indicators.year",
+              "nativeQueryRef": "year"
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "energy_indicators"
+                    }
+                  },
+                  "Property": "Low Carbon Share"
+                }
+              },
+              "queryRef": "energy_indicators.Low Carbon Share",
+              "nativeQueryRef": "Low Carbon Share"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

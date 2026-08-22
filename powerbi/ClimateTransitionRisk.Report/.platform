@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Report",
+    "displayName": "ClimateTransitionRisk"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "2c4e6a8b-0d1f-4a2b-8c3d-4e5f6a7b8c9d"
+  }
+}

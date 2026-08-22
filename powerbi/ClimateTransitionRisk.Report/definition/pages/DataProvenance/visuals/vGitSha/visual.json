@@ -1,0 +1,64 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.4.0/schema.json",
+  "name": "vGitSha",
+  "position": {
+    "x": 280,
+    "y": 60,
+    "z": 0,
+    "width": 250,
+    "height": 90
+  },
+  "visual": {
+    "visualType": "card",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "run_metadata"
+                    }
+                  },
+                  "Property": "Active Score Version"
+                }
+              },
+              "queryRef": "run_metadata.Active Score Version",
+              "nativeQueryRef": "Active Score Version"
+            }
+          ]
+        }
+      }
+    },
+    "objects": {
+      "categoryLabels": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "labels": [
+        {
+          "properties": {
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Active Score Version'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

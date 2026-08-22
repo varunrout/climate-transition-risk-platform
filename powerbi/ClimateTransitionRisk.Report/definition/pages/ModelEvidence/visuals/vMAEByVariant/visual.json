@@ -1,0 +1,54 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.4.0/schema.json",
+  "name": "vMAEByVariant",
+  "position": {
+    "x": 20,
+    "y": 180,
+    "z": 0,
+    "width": 600,
+    "height": 280
+  },
+  "visual": {
+    "visualType": "barChart",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "backtest_metrics"
+                    }
+                  },
+                  "Property": "model_variant"
+                }
+              },
+              "queryRef": "backtest_metrics.model_variant",
+              "nativeQueryRef": "model_variant"
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "backtest_metrics"
+                    }
+                  },
+                  "Property": "Backtest MAE"
+                }
+              },
+              "queryRef": "backtest_metrics.Backtest MAE",
+              "nativeQueryRef": "Backtest MAE"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

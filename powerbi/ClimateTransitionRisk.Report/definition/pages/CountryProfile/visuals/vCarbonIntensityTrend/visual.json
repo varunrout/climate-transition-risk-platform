@@ -1,0 +1,54 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.4.0/schema.json",
+  "name": "vCarbonIntensityTrend",
+  "position": {
+    "x": 540,
+    "y": 180,
+    "z": 0,
+    "width": 700,
+    "height": 260
+  },
+  "visual": {
+    "visualType": "lineChart",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "country_timeseries"
+                    }
+                  },
+                  "Property": "year"
+                }
+              },
+              "queryRef": "country_timeseries.year",
+              "nativeQueryRef": "year"
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "country_timeseries"
+                    }
+                  },
+                  "Property": "Carbon Intensity Trend"
+                }
+              },
+              "queryRef": "country_timeseries.Carbon Intensity Trend",
+              "nativeQueryRef": "Carbon Intensity Trend"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

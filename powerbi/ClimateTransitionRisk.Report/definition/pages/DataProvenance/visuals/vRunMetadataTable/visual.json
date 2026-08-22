@@ -1,0 +1,135 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.4.0/schema.json",
+  "name": "vRunMetadataTable",
+  "position": {
+    "x": 20,
+    "y": 170,
+    "z": 0,
+    "width": 1220,
+    "height": 200
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "run_metadata"
+                    }
+                  },
+                  "Property": "run_id"
+                }
+              },
+              "queryRef": "run_metadata.run_id",
+              "nativeQueryRef": "run_id"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "run_metadata"
+                    }
+                  },
+                  "Property": "git_sha"
+                }
+              },
+              "queryRef": "run_metadata.git_sha",
+              "nativeQueryRef": "git_sha"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "run_metadata"
+                    }
+                  },
+                  "Property": "image_ref"
+                }
+              },
+              "queryRef": "run_metadata.image_ref",
+              "nativeQueryRef": "image_ref"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "run_metadata"
+                    }
+                  },
+                  "Property": "config_hash"
+                }
+              },
+              "queryRef": "run_metadata.config_hash",
+              "nativeQueryRef": "config_hash"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "run_metadata"
+                    }
+                  },
+                  "Property": "owid_co2_snapshot_id"
+                }
+              },
+              "queryRef": "run_metadata.owid_co2_snapshot_id",
+              "nativeQueryRef": "owid_co2_snapshot_id"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "run_metadata"
+                    }
+                  },
+                  "Property": "world_bank_wdi_snapshot_id"
+                }
+              },
+              "queryRef": "run_metadata.world_bank_wdi_snapshot_id",
+              "nativeQueryRef": "world_bank_wdi_snapshot_id"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "run_metadata"
+                    }
+                  },
+                  "Property": "owid_energy_snapshot_id"
+                }
+              },
+              "queryRef": "run_metadata.owid_energy_snapshot_id",
+              "nativeQueryRef": "owid_energy_snapshot_id"
+            }
+          ]
+        }
+      }
+    },
+    "objects": {
+      "grid": [
+        {
+          "properties": {
+            "gridVertical": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

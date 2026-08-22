@@ -1,0 +1,107 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.4.0/schema.json",
+  "name": "vScenarioQuantiles",
+  "position": {
+    "x": 260,
+    "y": 380,
+    "z": 0,
+    "width": 980,
+    "height": 280
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "scenario_quantiles"
+                    }
+                  },
+                  "Property": "country_iso3"
+                }
+              },
+              "queryRef": "scenario_quantiles.country_iso3",
+              "nativeQueryRef": "country_iso3"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "scenario_quantiles"
+                    }
+                  },
+                  "Property": "Scenario P5"
+                }
+              },
+              "queryRef": "scenario_quantiles.Scenario P5",
+              "nativeQueryRef": "Scenario P5"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "scenario_quantiles"
+                    }
+                  },
+                  "Property": "Scenario P50"
+                }
+              },
+              "queryRef": "scenario_quantiles.Scenario P50",
+              "nativeQueryRef": "Scenario P50"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "scenario_quantiles"
+                    }
+                  },
+                  "Property": "Scenario P95"
+                }
+              },
+              "queryRef": "scenario_quantiles.Scenario P95",
+              "nativeQueryRef": "Scenario P95"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "scenario_quantiles"
+                    }
+                  },
+                  "Property": "Scenario Deterministic Baseline"
+                }
+              },
+              "queryRef": "scenario_quantiles.Scenario Deterministic Baseline",
+              "nativeQueryRef": "Scenario Deterministic Baseline"
+            }
+          ]
+        }
+      }
+    },
+    "objects": {
+      "grid": [
+        {
+          "properties": {
+            "gridVertical": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.4.0/schema.json",
+  "name": "vComponentDecomp",
+  "position": {
+    "x": 20,
+    "y": 180,
+    "z": 0,
+    "width": 500,
+    "height": 260
+  },
+  "visual": {
+    "visualType": "barChart",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "risk_components"
+                    }
+                  },
+                  "Property": "component_name"
+                }
+              },
+              "queryRef": "risk_components.component_name",
+              "nativeQueryRef": "component_name"
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "risk_components"
+                    }
+                  },
+                  "Property": "Component Score"
+                }
+              },
+              "queryRef": "risk_components.Component Score",
+              "nativeQueryRef": "Component Score"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

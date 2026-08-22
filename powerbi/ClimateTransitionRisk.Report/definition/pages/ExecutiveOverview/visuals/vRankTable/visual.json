@@ -1,0 +1,107 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.4.0/schema.json",
+  "name": "vRankTable",
+  "position": {
+    "x": 20,
+    "y": 180,
+    "z": 0,
+    "width": 620,
+    "height": 500
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "country_overview"
+                    }
+                  },
+                  "Property": "country_name"
+                }
+              },
+              "queryRef": "country_overview.country_name",
+              "nativeQueryRef": "country_name"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "country_overview"
+                    }
+                  },
+                  "Property": "Active Transition Risk Score"
+                }
+              },
+              "queryRef": "country_overview.Active Transition Risk Score",
+              "nativeQueryRef": "Active Transition Risk Score"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "country_overview"
+                    }
+                  },
+                  "Property": "Country Rank"
+                }
+              },
+              "queryRef": "country_overview.Country Rank",
+              "nativeQueryRef": "Country Rank"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "country_overview"
+                    }
+                  },
+                  "Property": "rank_band"
+                }
+              },
+              "queryRef": "country_overview.rank_band",
+              "nativeQueryRef": "rank_band"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "country_overview"
+                    }
+                  },
+                  "Property": "Data Confidence"
+                }
+              },
+              "queryRef": "country_overview.Data Confidence",
+              "nativeQueryRef": "Data Confidence"
+            }
+          ]
+        }
+      }
+    },
+    "objects": {
+      "grid": [
+        {
+          "properties": {
+            "gridVertical": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

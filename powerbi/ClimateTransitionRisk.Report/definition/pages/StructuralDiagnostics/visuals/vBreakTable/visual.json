@@ -1,0 +1,121 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.4.0/schema.json",
+  "name": "vBreakTable",
+  "position": {
+    "x": 20,
+    "y": 110,
+    "z": 0,
+    "width": 700,
+    "height": 500
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "regime_diagnostics"
+                    }
+                  },
+                  "Property": "country_name"
+                }
+              },
+              "queryRef": "regime_diagnostics.country_name",
+              "nativeQueryRef": "country_name"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "regime_diagnostics"
+                    }
+                  },
+                  "Property": "series_name"
+                }
+              },
+              "queryRef": "regime_diagnostics.series_name",
+              "nativeQueryRef": "series_name"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "regime_diagnostics"
+                    }
+                  },
+                  "Property": "strongest_break_year"
+                }
+              },
+              "queryRef": "regime_diagnostics.strongest_break_year",
+              "nativeQueryRef": "strongest_break_year"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "regime_diagnostics"
+                    }
+                  },
+                  "Property": "pre_break_slope"
+                }
+              },
+              "queryRef": "regime_diagnostics.pre_break_slope",
+              "nativeQueryRef": "pre_break_slope"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "regime_diagnostics"
+                    }
+                  },
+                  "Property": "post_break_slope"
+                }
+              },
+              "queryRef": "regime_diagnostics.post_break_slope",
+              "nativeQueryRef": "post_break_slope"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "regime_diagnostics"
+                    }
+                  },
+                  "Property": "regime_confidence"
+                }
+              },
+              "queryRef": "regime_diagnostics.regime_confidence",
+              "nativeQueryRef": "regime_confidence"
+            }
+          ]
+        }
+      }
+    },
+    "objects": {
+      "grid": [
+        {
+          "properties": {
+            "gridVertical": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.4.0/schema.json",
+  "name": "vCardDelta",
+  "position": {
+    "x": 400,
+    "y": 60,
+    "z": 0,
+    "width": 180,
+    "height": 100
+  },
+  "visual": {
+    "visualType": "card",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "country_overview"
+                    }
+                  },
+                  "Property": "Score Delta"
+                }
+              },
+              "queryRef": "country_overview.Score Delta",
+              "nativeQueryRef": "Score Delta"
+            }
+          ]
+        }
+      }
+    },
+    "objects": {
+      "categoryLabels": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "labels": [
+        {
+          "properties": {
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Score Delta v2-v1'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

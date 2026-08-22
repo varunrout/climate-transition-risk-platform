@@ -1,0 +1,107 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.4.0/schema.json",
+  "name": "vCountryConfidence",
+  "position": {
+    "x": 20,
+    "y": 390,
+    "z": 0,
+    "width": 1220,
+    "height": 300
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "country_overview"
+                    }
+                  },
+                  "Property": "country_name"
+                }
+              },
+              "queryRef": "country_overview.country_name",
+              "nativeQueryRef": "country_name"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "country_overview"
+                    }
+                  },
+                  "Property": "is_core_complete"
+                }
+              },
+              "queryRef": "country_overview.is_core_complete",
+              "nativeQueryRef": "is_core_complete"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "country_overview"
+                    }
+                  },
+                  "Property": "missing_feature_count"
+                }
+              },
+              "queryRef": "country_overview.missing_feature_count",
+              "nativeQueryRef": "missing_feature_count"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "country_overview"
+                    }
+                  },
+                  "Property": "Data Confidence"
+                }
+              },
+              "queryRef": "country_overview.Data Confidence",
+              "nativeQueryRef": "Data Confidence"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "country_overview"
+                    }
+                  },
+                  "Property": "Weight Coverage"
+                }
+              },
+              "queryRef": "country_overview.Weight Coverage",
+              "nativeQueryRef": "Weight Coverage"
+            }
+          ]
+        }
+      }
+    },
+    "objects": {
+      "grid": [
+        {
+          "properties": {
+            "gridVertical": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

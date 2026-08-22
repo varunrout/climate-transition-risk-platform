@@ -1,0 +1,54 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.4.0/schema.json",
+  "name": "vCoverageByVariant",
+  "position": {
+    "x": 640,
+    "y": 180,
+    "z": 0,
+    "width": 600,
+    "height": 280
+  },
+  "visual": {
+    "visualType": "barChart",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "backtest_metrics"
+                    }
+                  },
+                  "Property": "model_variant"
+                }
+              },
+              "queryRef": "backtest_metrics.model_variant",
+              "nativeQueryRef": "model_variant"
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "backtest_metrics"
+                    }
+                  },
+                  "Property": "Interval Coverage"
+                }
+              },
+              "queryRef": "backtest_metrics.Interval Coverage",
+              "nativeQueryRef": "Interval Coverage"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

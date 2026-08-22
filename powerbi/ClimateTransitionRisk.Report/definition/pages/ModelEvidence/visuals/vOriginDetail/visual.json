@@ -1,0 +1,107 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.4.0/schema.json",
+  "name": "vOriginDetail",
+  "position": {
+    "x": 20,
+    "y": 480,
+    "z": 0,
+    "width": 1220,
+    "height": 200
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "backtest_metrics"
+                    }
+                  },
+                  "Property": "country_iso3"
+                }
+              },
+              "queryRef": "backtest_metrics.country_iso3",
+              "nativeQueryRef": "country_iso3"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "backtest_metrics"
+                    }
+                  },
+                  "Property": "origin_year"
+                }
+              },
+              "queryRef": "backtest_metrics.origin_year",
+              "nativeQueryRef": "origin_year"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "backtest_metrics"
+                    }
+                  },
+                  "Property": "target_year"
+                }
+              },
+              "queryRef": "backtest_metrics.target_year",
+              "nativeQueryRef": "target_year"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "backtest_metrics"
+                    }
+                  },
+                  "Property": "model_variant"
+                }
+              },
+              "queryRef": "backtest_metrics.model_variant",
+              "nativeQueryRef": "model_variant"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "backtest_metrics"
+                    }
+                  },
+                  "Property": "absolute_error"
+                }
+              },
+              "queryRef": "backtest_metrics.absolute_error",
+              "nativeQueryRef": "absolute_error"
+            }
+          ]
+        }
+      }
+    },
+    "objects": {
+      "grid": [
+        {
+          "properties": {
+            "gridVertical": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

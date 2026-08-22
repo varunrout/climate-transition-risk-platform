@@ -1,0 +1,13 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/pages/1.4.0/schema.json",
+  "pageOrder": [
+    "ExecutiveOverview",
+    "CountryProfile",
+    "EnergyTransition",
+    "ScenarioExplorer",
+    "ModelEvidence",
+    "StructuralDiagnostics",
+    "DataProvenance"
+  ],
+  "activePageName": "ExecutiveOverview"
+}

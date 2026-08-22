@@ -1,0 +1,16 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/report/1.4.0/schema.json",
+  "themeCollection": {
+    "baseTheme": {
+      "name": "CY24SU10",
+      "type": "SharedResources",
+      "path": "BaseThemes/CY24SU10.json"
+    }
+  },
+  "layoutOptimization": "None",
+  "publicCustomVisuals": [],
+  "resourcePackages": [],
+  "settings": {
+    "useStylableVisualContainerHeader": true
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.4.0/schema.json",
+  "name": "vCardCalibGap",
+  "position": {
+    "x": 440,
+    "y": 60,
+    "z": 0,
+    "width": 200,
+    "height": 100
+  },
+  "visual": {
+    "visualType": "card",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "backtest_metrics"
+                    }
+                  },
+                  "Property": "Calibration Gap"
+                }
+              },
+              "queryRef": "backtest_metrics.Calibration Gap",
+              "nativeQueryRef": "Calibration Gap"
+            }
+          ]
+        }
+      }
+    },
+    "objects": {
+      "categoryLabels": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "labels": [
+        {
+          "properties": {
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Calibration Gap vs 90%'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

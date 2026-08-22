@@ -1,0 +1,54 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.4.0/schema.json",
+  "name": "vSlopeDelta",
+  "position": {
+    "x": 740,
+    "y": 110,
+    "z": 0,
+    "width": 500,
+    "height": 500
+  },
+  "visual": {
+    "visualType": "barChart",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "regime_diagnostics"
+                    }
+                  },
+                  "Property": "country_name"
+                }
+              },
+              "queryRef": "regime_diagnostics.country_name",
+              "nativeQueryRef": "country_name"
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "regime_diagnostics"
+                    }
+                  },
+                  "Property": "Slope Delta"
+                }
+              },
+              "queryRef": "regime_diagnostics.Slope Delta",
+              "nativeQueryRef": "Slope Delta"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

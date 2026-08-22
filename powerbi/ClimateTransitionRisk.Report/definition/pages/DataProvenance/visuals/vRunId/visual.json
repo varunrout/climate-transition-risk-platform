@@ -1,0 +1,64 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.4.0/schema.json",
+  "name": "vRunId",
+  "position": {
+    "x": 20,
+    "y": 60,
+    "z": 0,
+    "width": 250,
+    "height": 90
+  },
+  "visual": {
+    "visualType": "card",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "run_metadata"
+                    }
+                  },
+                  "Property": "Latest Successful Run Id"
+                }
+              },
+              "queryRef": "run_metadata.Latest Successful Run Id",
+              "nativeQueryRef": "Latest Successful Run Id"
+            }
+          ]
+        }
+      }
+    },
+    "objects": {
+      "categoryLabels": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "labels": [
+        {
+          "properties": {
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Run ID'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

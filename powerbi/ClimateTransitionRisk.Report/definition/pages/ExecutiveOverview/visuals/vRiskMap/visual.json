@@ -1,0 +1,54 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.4.0/schema.json",
+  "name": "vRiskMap",
+  "position": {
+    "x": 660,
+    "y": 180,
+    "z": 0,
+    "width": 600,
+    "height": 240
+  },
+  "visual": {
+    "visualType": "filledMap",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "country_overview"
+                    }
+                  },
+                  "Property": "country_name"
+                }
+              },
+              "queryRef": "country_overview.country_name",
+              "nativeQueryRef": "country_name"
+            }
+          ]
+        },
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "country_overview"
+                    }
+                  },
+                  "Property": "Active Transition Risk Score"
+                }
+              },
+              "queryRef": "country_overview.Active Transition Risk Score",
+              "nativeQueryRef": "Active Transition Risk Score"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

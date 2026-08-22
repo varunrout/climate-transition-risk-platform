@@ -1,0 +1,64 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.4.0/schema.json",
+  "name": "vModelYear",
+  "position": {
+    "x": 540,
+    "y": 60,
+    "z": 0,
+    "width": 250,
+    "height": 90
+  },
+  "visual": {
+    "visualType": "card",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "run_metadata"
+                    }
+                  },
+                  "Property": "Latest Model Year"
+                }
+              },
+              "queryRef": "run_metadata.Latest Model Year",
+              "nativeQueryRef": "Latest Model Year"
+            }
+          ]
+        }
+      }
+    },
+    "objects": {
+      "categoryLabels": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "labels": [
+        {
+          "properties": {
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Latest Model Eligible Year'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

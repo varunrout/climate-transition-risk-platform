@@ -1,0 +1,64 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.4.0/schema.json",
+  "name": "vCardConfidence",
+  "position": {
+    "x": 230,
+    "y": 60,
+    "z": 0,
+    "width": 200,
+    "height": 100
+  },
+  "visual": {
+    "visualType": "card",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "country_overview"
+                    }
+                  },
+                  "Property": "Data Confidence"
+                }
+              },
+              "queryRef": "country_overview.Data Confidence",
+              "nativeQueryRef": "Data Confidence"
+            }
+          ]
+        }
+      }
+    },
+    "objects": {
+      "categoryLabels": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "labels": [
+        {
+          "properties": {
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Data Confidence'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

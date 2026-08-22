@@ -1,0 +1,93 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.4.0/schema.json",
+  "name": "vScenarioTable",
+  "position": {
+    "x": 20,
+    "y": 460,
+    "z": 0,
+    "width": 500,
+    "height": 220
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "scenario_quantiles"
+                    }
+                  },
+                  "Property": "Scenario P5"
+                }
+              },
+              "queryRef": "scenario_quantiles.Scenario P5",
+              "nativeQueryRef": "Scenario P5"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "scenario_quantiles"
+                    }
+                  },
+                  "Property": "Scenario P50"
+                }
+              },
+              "queryRef": "scenario_quantiles.Scenario P50",
+              "nativeQueryRef": "Scenario P50"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "scenario_quantiles"
+                    }
+                  },
+                  "Property": "Scenario P95"
+                }
+              },
+              "queryRef": "scenario_quantiles.Scenario P95",
+              "nativeQueryRef": "Scenario P95"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "scenario_quantiles"
+                    }
+                  },
+                  "Property": "Scenario Deterministic Baseline"
+                }
+              },
+              "queryRef": "scenario_quantiles.Scenario Deterministic Baseline",
+              "nativeQueryRef": "Scenario Deterministic Baseline"
+            }
+          ]
+        }
+      }
+    },
+    "objects": {
+      "grid": [
+        {
+          "properties": {
+            "gridVertical": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
