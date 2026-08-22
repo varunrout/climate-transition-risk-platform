@@ -541,6 +541,146 @@ def m6_evaluate(
 
 
 @app.command()
+def m6_harden(
+    n_permutations: int = typer.Option(
+        2000, help="Strengthened permutation count (M6 phase 3, section 1)."
+    ),
+    random_seed: int = typer.Option(42, help="Deterministic seed for every stochastic step."),
+) -> None:
+    """M6 phase 3, sections 1-4: strengthen the M6 phase-2 evidence before
+    freezing a production energy-component specification.
+
+    Research-only, like `m6-evaluate` -- writes every artifact under
+    gold/research/m6/phase3/, never touches gold/country_transition_risk.parquet
+    (v1) or cli.score()/cli.publish(). See ADR 0009 for the resulting
+    freeze decision.
+    """
+    from climate_risk.features.decoupling import compute_decoupling_for_panel
+    from climate_risk.research.m6_panel import build_evaluation_panel
+    from climate_risk.research.m6_phase3_harden import run_hardening
+    from climate_risk.scenarios.engine import run_country_scenario
+    from climate_risk.scoring.risk_score import compute_raw_metrics
+
+    log = get_logger(stage="m6-harden")
+    lake = LakeStorage.from_env()
+
+    transition_found = _latest_silver_panel(lake)
+    energy_found = _latest_silver_energy_panel(lake)
+    if transition_found is None or energy_found is None:
+        typer.echo(
+            "requires both fact_country_year_transition and fact_country_year_energy; "
+            "run `climate-risk ingest` and `climate-risk build-silver` first",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    transition_panel, _ = transition_found
+    energy_panel, _ = energy_found
+    countries = sorted(load_countries().keys())
+
+    evaluation_panel = build_evaluation_panel(lake)
+    decoupling = {
+        r.country_iso3: r
+        for r in compute_decoupling_for_panel(transition_panel, min_observations=5)
+    }
+    scenarios = {}
+    for country_iso3 in countries:
+        result = run_country_scenario(
+            transition_panel, country_iso3=country_iso3, target_year=2050, random_seed=random_seed
+        )
+        if result is not None:
+            scenarios[country_iso3] = result
+    raw_metrics = compute_raw_metrics(
+        transition_panel, decoupling=decoupling, scenarios=scenarios, countries=countries
+    )
+
+    log.info("hardening started", n_permutations=n_permutations, random_seed=random_seed)
+    hardening_result = run_hardening(
+        transition_panel,
+        energy_panel,
+        evaluation_panel,
+        raw_metrics,
+        countries=countries,
+        n_permutations=n_permutations,
+        random_seed=random_seed,
+    )
+
+    prefix = "research/m6/phase3"
+    write_parquet(
+        lake.gold, f"{prefix}/incremental_dataset.parquet", hardening_result["incremental_dataset"]
+    )
+    write_json(
+        lake.gold,
+        f"{prefix}/permutation_result_incumbent.json",
+        hardening_result["permutation_result_incumbent"],
+    )
+    write_parquet(
+        lake.gold,
+        f"{prefix}/formulation_incremental.parquet",
+        hardening_result["formulation_incremental"],
+    )
+    write_json(
+        lake.gold,
+        f"{prefix}/formulation_permutations.json",
+        hardening_result["formulation_permutations"],
+    )
+    for name, frame in hardening_result["formulation_lookback"].items():
+        write_parquet(lake.gold, f"{prefix}/formulation_lookback_{name}.parquet", frame)
+    write_json(
+        lake.gold,
+        f"{prefix}/formulation_weight_sensitivity.json",
+        hardening_result["formulation_weight_sensitivity"],
+    )
+    write_json(
+        lake.gold,
+        f"{prefix}/formulation_missing_data.json",
+        hardening_result["formulation_missing_data"],
+    )
+    for name, frame in hardening_result["formulation_collinearity"].items():
+        write_parquet(lake.gold, f"{prefix}/formulation_collinearity_{name}.parquet", frame)
+    write_parquet(
+        lake.gold,
+        f"{prefix}/full_lookback_pairwise.parquet",
+        hardening_result["full_lookback_pairwise"],
+    )
+    write_parquet(
+        lake.gold,
+        f"{prefix}/lookback_instability_by_feature.parquet",
+        hardening_result["lookback_instability_by_feature"],
+    )
+    write_parquet(
+        lake.gold,
+        f"{prefix}/lookback_country_deltas.parquet",
+        hardening_result["lookback_country_deltas"],
+    )
+    write_json(
+        lake.gold, f"{prefix}/theil_sen_comparison.json", hardening_result["theil_sen_comparison"]
+    )
+    for name, frame in hardening_result["formulation_by_origin"].items():
+        write_parquet(lake.gold, f"{prefix}/formulation_by_origin_{name}.parquet", frame)
+    write_json(
+        lake.gold,
+        f"{prefix}/formulation_leave_one_origin_out.json",
+        hardening_result["formulation_leave_one_origin_out"],
+    )
+
+    permutation = hardening_result["permutation_result_incumbent"]
+    log.info(
+        "hardening complete",
+        permutation_p_value=permutation.get("permutation_p_value"),
+        n_permutations_run=permutation.get("n_permutations_run"),
+        observed_improvement_percentile_within_null=permutation.get(
+            "observed_improvement_percentile_within_null"
+        ),
+    )
+    typer.echo(
+        f"strengthened permutation test ({permutation.get('n_permutations_run')} perms): "
+        f"p={permutation.get('permutation_p_value')}, "
+        f"percentile_within_null={permutation.get('observed_improvement_percentile_within_null')}"
+    )
+    typer.echo(hardening_result["formulation_incremental"].to_string(index=False))
+
+
+@app.command()
 def backtest(
     n_simulations: int = typer.Option(10_000, help="Bootstrap simulation count per split."),
     random_seed: int = typer.Option(42, help="Seed for reproducibility."),
@@ -584,14 +724,28 @@ def score(
         42, help="Seed for scenario simulation and weight perturbation."
     ),
 ) -> None:
-    """Compute transition risk scores (v1, 4 of 5 components) and write gold/country_transition_risk.parquet."""
+    """Compute transition risk scores: v1 (4 of 5 components, permanent
+    comparison baseline, gold/country_transition_risk.parquet) and v2
+    (energy-augmented, the default production score since ADR 0009,
+    gold/country_transition_risk_v2.parquet). v1's own computation and
+    output are completely unaffected by v2's presence or absence.
+    """
     from climate_risk.features.decoupling import compute_decoupling_for_panel
+    from climate_risk.features.energy_transition import compute_energy_features_for_panel
     from climate_risk.scenarios.engine import run_country_scenario
+    from climate_risk.scoring.energy_component import compute_energy_component
     from climate_risk.scoring.risk_score import (
         WEIGHT_COVERAGE,
         compute_raw_metrics,
         compute_risk_scores,
         weight_perturbation_analysis,
+    )
+    from climate_risk.scoring.risk_score_v2_energy import (
+        SCORE_VERSION as V2_SCORE_VERSION,
+    )
+    from climate_risk.scoring.risk_score_v2_energy import (
+        compute_risk_scores_v2,
+        weight_perturbation_analysis_v2,
     )
 
     log = get_logger(stage="score")
@@ -618,28 +772,69 @@ def score(
     raw_metrics = compute_raw_metrics(
         panel, decoupling=decoupling, scenarios=scenarios, countries=countries
     )
-    scores = compute_risk_scores(raw_metrics)
-    if scores.empty:
+    scores_v1 = compute_risk_scores(raw_metrics)
+    if scores_v1.empty:
         typer.echo("no country scored (insufficient data for every candidate)", err=True)
         raise typer.Exit(code=1)
 
-    stability = weight_perturbation_analysis(
+    stability_v1 = weight_perturbation_analysis(
         raw_metrics, n_perturbations=200, random_seed=random_seed
     )
-
-    write_parquet(lake.gold, "country_transition_risk.parquet", scores)
-    write_json(lake.gold, "rank_stability.json", stability)
-
+    write_parquet(lake.gold, "country_transition_risk.parquet", scores_v1)
+    write_json(lake.gold, "rank_stability.json", stability_v1)
     log.info(
-        "score complete",
-        countries_scored=len(scores),
+        "v1 score complete",
+        countries_scored=len(scores_v1),
         countries_in_panel=len(countries),
         weight_coverage=WEIGHT_COVERAGE,
-        **stability,
+        **stability_v1,
     )
-    typer.echo(scores.to_string(index=False))
-    typer.echo(f"\nweight_coverage={WEIGHT_COVERAGE:.2f} (energy component not computed; see ADR)")
-    typer.echo(f"rank stability: {stability}")
+
+    # v2 (ADR 0009): best-effort on top of v1, which is already written and
+    # unaffected either way. Requires the energy silver table + enough
+    # history to compute the frozen 2-signal component; `publish` is what
+    # actually enforces fail-closed production requirements (section 15),
+    # not this command.
+    energy_found = _latest_silver_energy_panel(lake)
+    scores_v2 = None
+    if energy_found is None:
+        log.warning("no fact_country_year_energy silver table found; v2 score not computed")
+    else:
+        energy_panel, _ = energy_found
+        energy_features = compute_energy_features_for_panel(energy_panel, trailing_window_years=5)
+        if energy_features.empty:
+            log.warning("no country had enough energy history; v2 score not computed")
+        else:
+            energy_component = compute_energy_component(energy_features)
+            scores_v2 = compute_risk_scores_v2(raw_metrics, energy_component=energy_component)
+            if scores_v2.empty:
+                log.warning("v2 scoring produced no rows; v2 score not written")
+                scores_v2 = None
+            else:
+                stability_v2 = weight_perturbation_analysis_v2(
+                    raw_metrics,
+                    energy_component=energy_component,
+                    perturbation_fraction=0.3,
+                    n_perturbations=200,
+                    random_seed=random_seed,
+                )
+                write_parquet(lake.gold, "country_transition_risk_v2.parquet", scores_v2)
+                write_json(lake.gold, "rank_stability_v2.json", stability_v2)
+                log.info(
+                    "v2 score complete",
+                    score_version=V2_SCORE_VERSION,
+                    countries_scored=len(scores_v2),
+                    **stability_v2,
+                )
+
+    if scores_v2 is not None:
+        typer.echo(f"=== v2 ({V2_SCORE_VERSION}, PRODUCTION) ===")
+        typer.echo(scores_v2.to_string(index=False))
+        typer.echo("\n=== v1 (comparison baseline) ===")
+        typer.echo(scores_v1.to_string(index=False))
+    else:
+        typer.echo(scores_v1.to_string(index=False))
+        typer.echo(f"\nweight_coverage={WEIGHT_COVERAGE:.2f} (v1 only -- v2 not computed, see log)")
 
 
 @app.command()
@@ -647,14 +842,24 @@ def publish() -> None:
     """Fail-closed publish: promote the current gold outputs to latest_successful_run,
     or refuse and leave the previous release untouched (climate_risk.publishing.barrier).
 
-    Requires: an accepted silver panel, backtest gold outputs, and score gold
-    outputs to already exist (run `climate-risk run` first, or ingest/build-silver/
-    backtest/score individually). Writes a full evidence manifest to
-    gold/manifests/<run_id>.json in addition to the barrier's own pointer file.
+    Requires: an accepted silver panel, backtest gold outputs, and BOTH v1
+    and v2 score gold outputs to already exist (run `climate-risk run`
+    first, or ingest/build-silver/backtest/score individually). v2 is
+    required, not optional -- since ADR 0009, a run where the energy
+    pipeline or v2 scoring failed must not publish at all (section 15's
+    fail-closed requirement), not silently fall back to publishing v1 alone.
+    Writes a full evidence manifest to gold/manifests/<run_id>.json in
+    addition to the barrier's own pointer file.
     """
     from climate_risk.publishing.barrier import PublishBlockedError
     from climate_risk.publishing.barrier import publish as publish_barrier
     from climate_risk.scoring.risk_score import EFFECTIVE_WEIGHTS
+    from climate_risk.scoring.risk_score_v2_energy import (
+        COMPONENT_VERSION,
+        EFFECTIVE_WEIGHTS_V2,
+        WEIGHTS_VERSION,
+    )
+    from climate_risk.scoring.risk_score_v2_energy import SCORE_VERSION as V2_SCORE_VERSION
     from climate_risk.transforms.silver import latest_complete_common_year
 
     log = get_logger(stage="publish")
@@ -667,7 +872,11 @@ def publish() -> None:
         log.error("publish blocked", stage=stage, message=message)
 
     source_snapshots: dict[str, dict[str, str]] = {}
-    for source_name in ("owid_co2", "world_bank_wdi"):
+    # owid_energy is required here too (not just owid_co2/world_bank_wdi):
+    # since ADR 0009, v2 is the required production score, so a failed or
+    # missing energy ingestion must fail-close the whole publish, not just
+    # silently degrade to a v1-only release.
+    for source_name in ("owid_co2", "world_bank_wdi", "owid_energy"):
         manifest_paths = lake.raw.glob(f"source={source_name}/ingest_date=*/run_id=*/manifest.json")
         if not manifest_paths:
             _fail("ingest", f"no ingestion manifest found for source={source_name}")
@@ -706,18 +915,36 @@ def publish() -> None:
         typer.echo("publish blocked: no backtest output found", err=True)
         raise typer.Exit(code=1)
     if not lake.gold.exists("country_transition_risk.parquet"):
-        _fail("score", "no gold/country_transition_risk.parquet found")
-        typer.echo("publish blocked: no score output found", err=True)
+        _fail("score", "no gold/country_transition_risk.parquet (v1) found")
+        typer.echo("publish blocked: no v1 score output found", err=True)
+        raise typer.Exit(code=1)
+    if not lake.gold.exists("country_transition_risk_v2.parquet"):
+        _fail(
+            "score",
+            "no gold/country_transition_risk_v2.parquet (v2, ADR 0009 production score) found",
+        )
+        typer.echo(
+            "publish blocked: no v2 score output found -- energy ingestion, energy "
+            "feature construction, or v2 scoring must have failed upstream; the "
+            "previous successful release is left untouched",
+            err=True,
+        )
         raise typer.Exit(code=1)
 
     backtest_summary = read_parquet(lake.gold, "backtest_summary.parquet")
-    scores = read_parquet(lake.gold, "country_transition_risk.parquet")
+    scores_v1 = read_parquet(lake.gold, "country_transition_risk.parquet")
+    scores_v2 = read_parquet(lake.gold, "country_transition_risk_v2.parquet")
 
     run.snapshot_set_id = snapshot_set_id
     run.feature_set_version = "decoupling_v1"
     run.model_version = "empirical_bootstrap_v1"
     config_source = json.dumps(
-        {"weights": dict(EFFECTIVE_WEIGHTS), "sources": sorted(source_snapshots)},
+        {
+            "weights_v1": dict(EFFECTIVE_WEIGHTS),
+            "weights_v2": dict(EFFECTIVE_WEIGHTS_V2),
+            "component_version": COMPONENT_VERSION,
+            "sources": sorted(source_snapshots),
+        },
         sort_keys=True,
     )
     run.config_hash = hashlib.sha256(config_source.encode()).hexdigest()[:16]
@@ -747,11 +974,24 @@ def publish() -> None:
         "quality_status": "ACCEPTED",
         "model_variant": run.model_version,
         "backtest_metrics": backtest_summary.to_dict(orient="records"),
-        "score_version": "v1",
+        # Active production score since ADR 0009 -- v2, not v1. v1 is
+        # preserved as a permanent, always-computed comparison artifact
+        # (gold/country_transition_risk.parquet), never deleted or silently
+        # superseded; this field is what a downstream consumer must read to
+        # know which one is authoritative.
+        "score_version": V2_SCORE_VERSION,
+        "component_version": COMPONENT_VERSION,
+        "weights_version": WEIGHTS_VERSION,
+        "comparison_score_version": "v1",
+        "v1_artifact": "country_transition_risk.parquet",
+        "v2_artifact": "country_transition_risk_v2.parquet",
+        "v1_countries_scored": len(scores_v1),
+        "v2_countries_scored": len(scores_v2),
         "publish_status": "PUBLISHED",
         "latest_model_eligible_year": eligible_year,
         "latest_model_eligible_year_completeness": completeness,
         "azure_job_execution_id": azure_job_execution_id,
+        "generated_at": run.completed_at.isoformat() if run.completed_at else None,
     }
     manifest_path = f"manifests/{run.run_id}.json"
     write_json(lake.gold, manifest_path, manifest)
@@ -763,6 +1003,7 @@ def publish() -> None:
             required_artifacts=[
                 "backtest_summary.parquet",
                 "country_transition_risk.parquet",
+                "country_transition_risk_v2.parquet",
                 manifest_path,
             ],
         )
@@ -773,10 +1014,15 @@ def publish() -> None:
     log.info(
         "published",
         release_id=snapshot_set_id,
-        countries=len(scores),
+        active_score_version=V2_SCORE_VERSION,
+        v1_countries=len(scores_v1),
+        v2_countries=len(scores_v2),
         azure_job_execution_id=azure_job_execution_id,
     )
-    typer.echo(f"published release_id={snapshot_set_id} ({len(scores)} countries scored)")
+    typer.echo(
+        f"published release_id={snapshot_set_id}, active_score_version={V2_SCORE_VERSION} "
+        f"({len(scores_v2)} countries scored v2, {len(scores_v1)} v1 comparison)"
+    )
 
 
 @app.command()

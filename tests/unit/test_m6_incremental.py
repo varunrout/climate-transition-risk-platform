@@ -8,7 +8,10 @@ from climate_risk.research.m6_incremental import (
     ENERGY_CANDIDATE_FEATURES,
     ablation_comparison,
     build_incremental_dataset,
+    compare_feature_sets,
     leave_one_country_out_comparison,
+    leave_one_country_out_comparison_by_origin,
+    leave_one_origin_out_comparison,
     permutation_test,
 )
 
@@ -165,3 +168,112 @@ def test_ablation_comparison_covers_each_feature_and_the_combination(
     ablation = ablation_comparison(dataset)
     feature_sets = set(ablation["feature_set"])
     assert feature_sets == {*ENERGY_CANDIDATE_FEATURES, "all_three_combined"}
+
+
+# ---------------------------------------------------------------------------
+# Strengthened permutation test (M6 phase 3, section 1)
+# ---------------------------------------------------------------------------
+
+
+def test_permutation_test_reports_seed_and_percentile_within_null(
+    transition_panel: pd.DataFrame, energy_panel: pd.DataFrame
+) -> None:
+    dataset = build_incremental_dataset(
+        transition_panel, energy_panel, countries=COUNTRIES, origins=ORIGINS
+    )
+    result = permutation_test(dataset, n_permutations=50, random_seed=11)
+    assert result["random_seed"] == 11
+    assert result["n_permutations_requested"] == 50
+    percentile = result["observed_improvement_percentile_within_null"]
+    if percentile is not None:
+        assert 0.0 <= percentile <= 100.0
+
+
+def test_permutation_test_at_larger_n_still_deterministic(
+    transition_panel: pd.DataFrame, energy_panel: pd.DataFrame
+) -> None:
+    dataset = build_incremental_dataset(
+        transition_panel, energy_panel, countries=COUNTRIES, origins=ORIGINS
+    )
+    first = permutation_test(dataset, n_permutations=300, random_seed=99)
+    second = permutation_test(dataset, n_permutations=300, random_seed=99)
+    assert first == second
+    assert first["n_permutations_run"] == 300
+
+
+# ---------------------------------------------------------------------------
+# Redundancy-reduced formulation comparison (M6 phase 3, section 2)
+# ---------------------------------------------------------------------------
+
+
+def test_compare_feature_sets_returns_one_row_per_formulation(
+    transition_panel: pd.DataFrame, energy_panel: pd.DataFrame
+) -> None:
+    dataset = build_incremental_dataset(
+        transition_panel, energy_panel, countries=COUNTRIES, origins=ORIGINS
+    )
+    formulations = {
+        "three_signal": ENERGY_CANDIDATE_FEATURES,
+        "two_signal": ["low_carbon_share_elec", "clean_power_momentum_pp_per_year"],
+    }
+    result = compare_feature_sets(dataset, formulations)
+    assert set(result["formulation"]) == set(formulations.keys())
+    assert (result["n_features"] == result["formulation"].map(lambda f: len(formulations[f]))).all()
+
+
+# ---------------------------------------------------------------------------
+# Temporal / origin robustness (M6 phase 3, section 4)
+# ---------------------------------------------------------------------------
+
+
+def test_by_origin_comparison_returns_one_row_per_origin(
+    transition_panel: pd.DataFrame, energy_panel: pd.DataFrame
+) -> None:
+    dataset = build_incremental_dataset(
+        transition_panel, energy_panel, countries=COUNTRIES, origins=ORIGINS
+    )
+    by_origin = leave_one_country_out_comparison_by_origin(dataset)
+    assert set(by_origin["origin_year"]) == {o for o, _ in ORIGINS}
+
+
+def test_leave_one_origin_out_reports_error_with_too_few_origins(
+    transition_panel: pd.DataFrame, energy_panel: pd.DataFrame
+) -> None:
+    dataset = build_incremental_dataset(
+        transition_panel, energy_panel, countries=COUNTRIES, origins=ORIGINS[:2]
+    )
+    result = leave_one_origin_out_comparison(dataset)
+    assert "error" in result
+
+
+def test_leave_one_origin_out_runs_with_enough_origins(
+    transition_panel: pd.DataFrame, energy_panel: pd.DataFrame
+) -> None:
+    many_origins = [(y, y + 4) for y in range(2005, 2018)]
+    dataset = build_incremental_dataset(
+        transition_panel, energy_panel, countries=COUNTRIES, origins=many_origins
+    )
+    result = leave_one_origin_out_comparison(dataset)
+    if "error" not in result:
+        assert result["baseline_mae"] >= 0
+        assert result["augmented_mae"] >= 0
+
+
+def test_no_future_leakage_in_by_origin_comparison(
+    transition_panel: pd.DataFrame, energy_panel: pd.DataFrame
+) -> None:
+    """The per-origin breakdown must show the same no-leakage guarantee as
+    the pooled dataset -- corrupting future energy data must not change an
+    earlier origin's row."""
+    origin_year = 2018
+    clean = build_incremental_dataset(
+        transition_panel, energy_panel, countries=COUNTRIES, origins=[(origin_year, 2022)]
+    )
+    corrupted_energy = energy_panel.copy()
+    corrupted_energy.loc[corrupted_energy["year"] > origin_year, "low_carbon_share_elec"] = 999.0
+    corrupted = build_incremental_dataset(
+        transition_panel, corrupted_energy, countries=COUNTRIES, origins=[(origin_year, 2022)]
+    )
+    clean_by_origin = leave_one_country_out_comparison_by_origin(clean)
+    corrupted_by_origin = leave_one_country_out_comparison_by_origin(corrupted)
+    pd.testing.assert_frame_equal(clean_by_origin, corrupted_by_origin)

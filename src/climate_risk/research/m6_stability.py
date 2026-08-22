@@ -41,8 +41,19 @@ def yoy_volatility(raw_energy_panel: pd.DataFrame, *, column: str) -> pd.DataFra
     return pd.DataFrame(rows).sort_values("country_iso3").reset_index(drop=True)
 
 
+DEFAULT_LOOKBACK_TARGET_COLUMNS = [
+    "coal_trend_pp_per_year",
+    "clean_power_momentum_pp_per_year",
+    "renewable_buildout_rate_pp_per_year",
+    "fossil_persistence_mean_pct",
+]
+
+
 def lookback_window_sensitivity(
-    energy_panel: pd.DataFrame, *, windows: tuple[int, ...] = LOOKBACK_WINDOWS_TESTED
+    energy_panel: pd.DataFrame,
+    *,
+    windows: tuple[int, ...] = LOOKBACK_WINDOWS_TESTED,
+    target_columns: list[str] = DEFAULT_LOOKBACK_TARGET_COLUMNS,
 ) -> dict[str, object]:
     """Recompute the derived features under each window in `windows` and
     compare. A feature whose cross-country rank order flips substantially
@@ -52,11 +63,6 @@ def lookback_window_sensitivity(
     per_window = {
         w: compute_energy_features_for_panel(energy_panel, trailing_window_years=w) for w in windows
     }
-    target_columns = [
-        "coal_trend_pp_per_year",
-        "clean_power_momentum_pp_per_year",
-        "renewable_buildout_rate_pp_per_year",
-    ]
 
     pairwise_rows = []
     for column in target_columns:
@@ -84,6 +90,124 @@ def lookback_window_sensitivity(
     return {
         "windows_tested": list(windows),
         "pairwise_comparisons": pd.DataFrame(pairwise_rows),
+    }
+
+
+def lookback_instability_by_feature(pairwise_comparisons: pd.DataFrame) -> pd.DataFrame:
+    """Which feature drives the instability in `lookback_window_sensitivity`'s
+    output -- one row per feature with its mean/min Spearman rho across all
+    tested window pairs (M6 phase 3, section 3: "which features drive
+    instability")."""
+    valid = pairwise_comparisons.dropna(subset=["spearman_rank_correlation"])
+    if valid.empty:
+        return pd.DataFrame(
+            columns=["feature", "mean_spearman_correlation", "min_spearman_correlation"]
+        )
+    summary = (
+        valid.groupby("feature")["spearman_rank_correlation"].agg(["mean", "min"]).reset_index()
+    )
+    return summary.rename(
+        columns={"mean": "mean_spearman_correlation", "min": "min_spearman_correlation"}
+    ).sort_values("mean_spearman_correlation")
+
+
+def lookback_window_country_deltas(
+    energy_panel: pd.DataFrame,
+    *,
+    short_window: int = 3,
+    long_window: int = 7,
+    target_columns: list[str] = DEFAULT_LOOKBACK_TARGET_COLUMNS,
+) -> pd.DataFrame:
+    """Per-country, per-feature value shift between the shortest and longest
+    tested trailing window -- answers "which countries move most" rather
+    than only the aggregate rank-correlation in `lookback_window_sensitivity`.
+    """
+    short = compute_energy_features_for_panel(energy_panel, trailing_window_years=short_window)
+    long = compute_energy_features_for_panel(energy_panel, trailing_window_years=long_window)
+    short_idx = short.set_index("country_iso3")
+    long_idx = long.set_index("country_iso3")
+    common = short_idx.index.intersection(long_idx.index)
+
+    rows = []
+    for country_iso3 in common:
+        for column in target_columns:
+            v_short = short_idx.loc[country_iso3, column]
+            v_long = long_idx.loc[country_iso3, column]
+            if pd.isna(v_short) or pd.isna(v_long):
+                continue
+            rows.append(
+                {
+                    "country_iso3": country_iso3,
+                    "feature": column,
+                    f"value_at_{short_window}yr": float(v_short),
+                    f"value_at_{long_window}yr": float(v_long),
+                    "abs_difference": float(abs(v_short - v_long)),
+                }
+            )
+    return pd.DataFrame(rows).sort_values("abs_difference", ascending=False).reset_index(drop=True)
+
+
+def theil_sen_vs_ols_lookback_stability(
+    energy_panel: pd.DataFrame,
+    *,
+    column: str = "low_carbon_share_elec",
+    windows: tuple[int, ...] = LOOKBACK_WINDOWS_TESTED,
+) -> dict[str, object]:
+    """Section 3 asks whether "a smoother construction improves stability
+    without leakage". Tests one concrete alternative: a Theil-Sen robust
+    trend slope (median of pairwise slopes -- resistant to a single noisy
+    annual observation) in place of the production OLS slope, comparing
+    each estimator's own trailing-window (3 vs 5 vs 7yr) rank-stability on
+    the same underlying series. Both estimators only ever see
+    year <= the window's own cutoff -- no future data enters either.
+    """
+    from scipy import stats as scipy_stats
+
+    def _slopes_per_window(estimator: str) -> dict[int, pd.Series]:
+        result: dict[int, pd.Series] = {}
+        for window in windows:
+            values: dict[str, float] = {}
+            for country_iso3, group in energy_panel.groupby("country_iso3"):
+                series = group.dropna(subset=[column]).sort_values("year")
+                if len(series) < 3:
+                    continue
+                latest_year = int(series["year"].max())
+                windowed = series[series["year"] > latest_year - window]
+                if len(windowed) < 3:
+                    continue
+                years = windowed["year"].to_numpy(dtype=float)
+                vals = windowed[column].to_numpy(dtype=float)
+                if estimator == "ols":
+                    slope = float(scipy_stats.linregress(years, vals).slope)
+                else:
+                    slope = float(scipy_stats.theilslopes(vals, years).slope)
+                values[str(country_iso3)] = slope
+            result[window] = pd.Series(values)
+        return result
+
+    def _mean_pairwise_spearman(slopes_by_window: dict[int, pd.Series]) -> float | None:
+        correlations = []
+        for i, w1 in enumerate(windows):
+            for w2 in windows[i + 1 :]:
+                common = slopes_by_window[w1].index.intersection(slopes_by_window[w2].index)
+                if len(common) < 3:
+                    continue
+                correlations.append(
+                    float(
+                        scipy_stats.spearmanr(
+                            slopes_by_window[w1][common], slopes_by_window[w2][common]
+                        ).correlation
+                    )
+                )
+        return float(sum(correlations) / len(correlations)) if correlations else None
+
+    ols_slopes = _slopes_per_window("ols")
+    theil_sen_slopes = _slopes_per_window("theil_sen")
+    return {
+        "column": column,
+        "windows_tested": list(windows),
+        "ols_mean_pairwise_spearman": _mean_pairwise_spearman(ols_slopes),
+        "theil_sen_mean_pairwise_spearman": _mean_pairwise_spearman(theil_sen_slopes),
     }
 
 

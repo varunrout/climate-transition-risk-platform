@@ -54,6 +54,16 @@ ENERGY_CANDIDATE_FEATURES: list[str] = [
     "fossil_persistence_mean_pct",
 ]
 
+# Carried alongside ENERGY_CANDIDATE_FEATURES purely so alternative
+# (redundancy-reduced) component formulations can be compared in
+# `compare_feature_sets` without a second dataset build -- see
+# `climate_risk.research.m6_component_alternatives` (M6 phase 3, section 2).
+# coal_share_elec is its own redundancy cluster in ADR 0008's clustering
+# (unlike low_carbon_share_elec/fossil_persistence_mean_pct, which are
+# near-mechanical mirrors of each other), making it a candidate
+# less-redundant "level" signal.
+EXTRA_DATASET_COLUMNS: list[str] = ["coal_share_elec"]
+
 
 def build_incremental_dataset(
     transition_panel: pd.DataFrame,
@@ -104,7 +114,7 @@ def build_incremental_dataset(
                 "log_baseline_forecast": float(np.log(baseline.forecast_value)),
             }
             row["residual"] = row["log_actual"] - row["log_baseline_forecast"]  # type: ignore[operator]
-            for feature_name in ENERGY_CANDIDATE_FEATURES:
+            for feature_name in [*ENERGY_CANDIDATE_FEATURES, *EXTRA_DATASET_COLUMNS]:
                 row[feature_name] = getattr(features, feature_name)
             rows.append(row)
     return pd.DataFrame(rows)
@@ -208,18 +218,117 @@ def permutation_test(
 
     observed_improvement = observed["mae_improvement"]
     assert isinstance(observed_improvement, float)
-    p_value = (
-        float(np.mean(np.array(improvements) >= observed_improvement)) if improvements else None
+    null_array = np.array(improvements)
+    p_value = float(np.mean(null_array >= observed_improvement)) if improvements else None
+    # "percentile of observed improvement within the null" -- what fraction
+    # of the null (fake-relationship) improvements fall AT OR BELOW the
+    # real, observed improvement. High (e.g. >95) means the observed result
+    # sits at the extreme upper tail of what pure chance produces here.
+    percentile_within_null = (
+        float(np.mean(null_array <= observed_improvement) * 100.0) if improvements else None
     )
     return {
         "observed_mae_improvement": observed_improvement,
+        "n_permutations_requested": n_permutations,
         "n_permutations_run": len(improvements),
+        "random_seed": random_seed,
         "permutation_p_value": p_value,
+        "observed_improvement_percentile_within_null": percentile_within_null,
         "null_improvement_mean": float(np.mean(improvements)) if improvements else None,
         "null_improvement_std": float(np.std(improvements, ddof=1))
         if len(improvements) > 1
         else None,
     }
+
+
+def leave_one_country_out_comparison_by_origin(
+    dataset: pd.DataFrame, *, feature_columns: list[str] = ENERGY_CANDIDATE_FEATURES
+) -> pd.DataFrame:
+    """The same leave-one-country-out comparison, computed separately per
+    origin_year rather than pooled -- reveals whether an apparent
+    improvement is broad-based across the backtest's historical windows or
+    concentrated in one favourable period (M6 phase 3, section 4)."""
+    rows = []
+    for origin_year in sorted(dataset["origin_year"].unique()):
+        subset = dataset[dataset["origin_year"] == origin_year]
+        target_years = subset["target_year"].unique()
+        target_year = int(target_years[0]) if len(target_years) == 1 else None
+        result = leave_one_country_out_comparison(subset, feature_columns=feature_columns)
+        rows.append({"origin_year": int(origin_year), "target_year": target_year, **result})
+    return pd.DataFrame(rows)
+
+
+def leave_one_origin_out_comparison(
+    dataset: pd.DataFrame, *, feature_columns: list[str] = ENERGY_CANDIDATE_FEATURES
+) -> dict[str, object]:
+    """Held-out unit is an entire origin_year (all countries at once) rather
+    than a country -- tests whether the fitted correction generalises across
+    time, not just across countries. With only 6 origins this is a coarser,
+    lower-power test than the country-wise CV and is reported alongside it,
+    not instead of it."""
+    complete = dataset.dropna(subset=[*feature_columns, "residual"])
+    origins = sorted(complete["origin_year"].unique())
+    if len(origins) < 3:
+        return {
+            "error": f"only {len(origins)} distinct origins available; need >= 3 for leave-one-origin-out CV",
+            "n_origins": len(origins),
+        }
+
+    baseline_abs_errors: list[float] = []
+    augmented_abs_errors: list[float] = []
+    n_splits_evaluated = 0
+    for held_out_origin in origins:
+        train = complete[complete["origin_year"] != held_out_origin]
+        test = complete[complete["origin_year"] == held_out_origin]
+        if len(train) < len(feature_columns) + 2 or test.empty:
+            continue
+
+        x_train = sm.add_constant(train[feature_columns], has_constant="add")
+        model = sm.OLS(train["residual"].to_numpy(dtype=float), x_train.to_numpy(dtype=float)).fit()
+
+        x_test = sm.add_constant(test[feature_columns], has_constant="add")
+        predicted_residual = model.predict(x_test.to_numpy(dtype=float))
+
+        baseline_forecast = np.exp(test["log_baseline_forecast"].to_numpy(dtype=float))
+        augmented_forecast = np.exp(
+            test["log_baseline_forecast"].to_numpy(dtype=float) + predicted_residual
+        )
+        actual = test["actual"].to_numpy(dtype=float)
+
+        baseline_abs_errors.extend(np.abs(baseline_forecast - actual).tolist())
+        augmented_abs_errors.extend(np.abs(augmented_forecast - actual).tolist())
+        n_splits_evaluated += len(test)
+
+    if not baseline_abs_errors:
+        return {
+            "error": "no held-out origin had enough training rows to fit",
+            "n_origins": len(origins),
+        }
+
+    baseline_mae = float(np.mean(baseline_abs_errors))
+    augmented_mae = float(np.mean(augmented_abs_errors))
+    return {
+        "feature_columns": feature_columns,
+        "n_splits": n_splits_evaluated,
+        "n_origins_in_cv": len(origins),
+        "baseline_mae": baseline_mae,
+        "augmented_mae": augmented_mae,
+        "mae_improvement": baseline_mae - augmented_mae,
+        "mae_improvement_pct": (
+            (baseline_mae - augmented_mae) / baseline_mae if baseline_mae else None
+        ),
+    }
+
+
+def compare_feature_sets(dataset: pd.DataFrame, feature_sets: dict[str, list[str]]) -> pd.DataFrame:
+    """Run leave-one-country-out comparison for each named candidate
+    component formulation (M6 phase 3, section 2: 3-signal vs 2-signal vs
+    alternatives) so they can be compared on equal footing."""
+    rows = []
+    for name, columns in feature_sets.items():
+        result = leave_one_country_out_comparison(dataset, feature_columns=columns)
+        rows.append({"formulation": name, "n_features": len(columns), **result})
+    return pd.DataFrame(rows)
 
 
 def ablation_comparison(dataset: pd.DataFrame) -> pd.DataFrame:

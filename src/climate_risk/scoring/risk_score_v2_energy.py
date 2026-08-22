@@ -1,22 +1,33 @@
-"""Transition risk scoring v2 -- EXPERIMENTAL, energy-augmented (M6 phase 2).
+"""Transition risk scoring v2, energy-augmented -- FROZEN production spec
+(M6 phase 3, ADR 0009).
 
 This module NEVER touches `climate_risk.scoring.risk_score` (v1): it is
 additive, importing v1's `CountryRawMetrics` and `_percentile_score`
-convention rather than modifying them, and it is not called from
-`cli.score()` or `cli.publish()`. v1 remains the production score until an
-explicit M6 decision promotes v2 -- see docs/adr/ for that decision.
+convention rather than modifying them. v1's own output
+(`gold/country_transition_risk.parquet`, `compute_risk_scores`) is byte-for-byte
+unchanged by this module's existence or by v2's promotion to production --
+see `tests/unit/test_risk_score_v2_energy.py::test_v1_available_components_still_exclude_energy`.
 
-v2 adds a 5th component (`energy`, `climate_risk.scoring.energy_component`)
-to v1's four, using the SAME nominal weight scheme already declared in v1
-(`NOMINAL_WEIGHTS["energy"] = 0.20` was always reserved, just never
-computed) -- so v2's five nominal weights already sum to 1.0 and don't need
-rescaling globally. Per-country missing-data handling reuses v1's
-weighted_sum/weight_present renormalisation loop unchanged: a country
-missing the energy component still gets a score from its other four
-components, with a correspondingly lower per-country `weight_coverage`
-(this differs from v1, where `weight_coverage` was a single global constant
-because energy was structurally 100% absent for every country -- v2 tracks
-it per-country because energy coverage varies by country).
+v2 adds a 5th component (`energy`, `climate_risk.scoring.energy_component`,
+frozen spec `energy_component_v2.1`) to v1's four, using the SAME nominal
+weight scheme already declared in v1 (`NOMINAL_WEIGHTS["energy"] = 0.20`
+was always reserved, just never computed) -- so v2's five nominal weights
+already sum to 1.0 and don't need rescaling globally. Per-country
+missing-data handling reuses v1's weighted_sum/weight_present
+renormalisation loop unchanged: a country missing the energy component
+still gets a score from its other four components, with a correspondingly
+lower per-country `weight_coverage` (this differs from v1, where
+`weight_coverage` was a single global constant because energy was
+structurally 100% absent for every country -- v2 tracks it per-country
+because energy coverage varies by country).
+
+Promoted from ADR 0008's experimental status to the default production
+score by ADR 0009, after the phase-3 evidence-hardening pass (2000-permutation
+test, redundancy-reduced 2-signal component, per-origin/leave-one-origin-out
+temporal checks) confirmed the ACCEPT decision holds under stronger scrutiny.
+`cli.score()` now computes both v1 and v2; `cli.publish()` declares v2 as
+the active production score while preserving v1 as a permanent comparison
+artifact -- see `climate_risk.cli.score` / `climate_risk.cli.publish`.
 """
 
 from __future__ import annotations
@@ -25,6 +36,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
+from climate_risk.scoring.energy_component import ENERGY_COMPONENT_VERSION
 from climate_risk.scoring.risk_score import (
     BANDS,
     NOMINAL_WEIGHTS,
@@ -32,7 +44,14 @@ from climate_risk.scoring.risk_score import (
     _percentile_score,
 )
 
-SCORE_VERSION = "v2_energy_experimental"
+SCORE_VERSION = "v2_energy"
+COMPONENT_VERSION = ENERGY_COMPONENT_VERSION
+WEIGHTS_VERSION = "v2_weights_v1"
+"""Identifies the *weight scheme* (which nominal weights, which components
+are available) separately from the *component formula* (COMPONENT_VERSION)
+-- a future weight-only change (e.g. re-deriving the energy weight from a
+fitted model) would bump WEIGHTS_VERSION without needing a new
+COMPONENT_VERSION, and vice versa."""
 
 AVAILABLE_COMPONENTS_V2 = ("pace", "coupling", "volatility", "forward_downside", "energy")
 _available_weight_sum_v2 = sum(NOMINAL_WEIGHTS[c] for c in AVAILABLE_COMPONENTS_V2)
@@ -122,6 +141,8 @@ def compute_risk_scores_v2(
         {
             "country_iso3": component_scores.index,
             "score_version": SCORE_VERSION,
+            "component_version": COMPONENT_VERSION,
+            "weights_version": WEIGHTS_VERSION,
             "score_total": score_total.to_numpy(),
             "score_pace": component_scores["pace"].to_numpy(),
             "score_coupling": component_scores["coupling"].to_numpy(),

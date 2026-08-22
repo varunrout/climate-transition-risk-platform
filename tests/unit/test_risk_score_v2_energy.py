@@ -7,8 +7,10 @@ import pytest
 from climate_risk.scoring import risk_score
 from climate_risk.scoring.risk_score_v2_energy import (
     AVAILABLE_COMPONENTS_V2,
+    COMPONENT_VERSION,
     EFFECTIVE_WEIGHTS_V2,
     SCORE_VERSION,
+    WEIGHTS_VERSION,
     compute_risk_scores_v2,
     weight_perturbation_analysis_v2,
 )
@@ -45,7 +47,6 @@ def make_energy_component(countries: list[str], *, missing: set[str] | None = No
                     "energy_confidence": 0.0,
                     "sub_score_power_system_dependence": None,
                     "sub_score_transition_momentum": None,
-                    "sub_score_fossil_persistence": None,
                     "n_sub_signals_available": 0,
                 }
             )
@@ -57,8 +58,7 @@ def make_energy_component(countries: list[str], *, missing: set[str] | None = No
                     "energy_confidence": 100.0,
                     "sub_score_power_system_dependence": float(rng.uniform(0, 100)),
                     "sub_score_transition_momentum": float(rng.uniform(0, 100)),
-                    "sub_score_fossil_persistence": float(rng.uniform(0, 100)),
-                    "n_sub_signals_available": 3,
+                    "n_sub_signals_available": 2,
                 }
             )
     return pd.DataFrame(rows)
@@ -103,7 +103,18 @@ def test_score_version_field_present() -> None:
     energy = make_energy_component(countries)
     scores = compute_risk_scores_v2(metrics, energy_component=energy)
     assert (scores["score_version"] == SCORE_VERSION).all()
+    assert SCORE_VERSION == "v2_energy"  # regression guard: promoted, no longer "_experimental"
     assert SCORE_VERSION != "v1"
+
+
+def test_component_and_weights_version_fields_present() -> None:
+    metrics = make_metrics()
+    countries = [m.country_iso3 for m in metrics]
+    energy = make_energy_component(countries)
+    scores = compute_risk_scores_v2(metrics, energy_component=energy)
+    assert (scores["component_version"] == COMPONENT_VERSION).all()
+    assert (scores["weights_version"] == WEIGHTS_VERSION).all()
+    assert COMPONENT_VERSION == "energy_component_v2.1"
 
 
 def test_scores_within_0_100_range() -> None:
