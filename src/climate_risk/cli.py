@@ -983,6 +983,32 @@ def m7_phase4(
 
 
 @app.command()
+def build_bi(
+    scenario_target_year: int = typer.Option(
+        2030, help="Target year for the production scenario explorer table."
+    ),
+) -> None:
+    """Build Power BI-ready semantic tables under gold/bi/.
+
+    This is a downstream publication layer. It reshapes validated silver/gold
+    analytics for BI consumption and does not recompute risk scoring or alter
+    the production publish pointer.
+    """
+    from climate_risk.bi.publish import build_bi_artifacts, write_bi_artifacts
+
+    log = get_logger(stage="build-bi")
+    lake = prepare_lake_from_env(log)
+    artifacts = build_bi_artifacts(lake, scenario_target_year=scenario_target_year)
+    write_bi_artifacts(lake, artifacts)
+    log.info(
+        "Power BI semantic tables written",
+        table_count=len(artifacts.as_dict()),
+        scenario_target_year=scenario_target_year,
+    )
+    typer.echo("Power BI semantic tables written under gold/bi/")
+
+
+@app.command()
 def backtest(
     n_simulations: int = typer.Option(10_000, help="Bootstrap simulation count per split."),
     random_seed: int = typer.Option(42, help="Seed for reproducibility."),
