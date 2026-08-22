@@ -20,9 +20,9 @@ there is not claimed here until it is implemented, tested, and committed.
 | M3 | Decoupling analytics, deterministic + bootstrap scenario engine | **Implemented** (library only; not yet CLI-wired) |
 | M4 | Rolling-origin backtesting harness | **Implemented** |
 | M5 | Transition risk scoring v1 (4 of 5 components), rank stability | **Implemented** |
-| M6 | Energy-system transition features | **Locally complete and production-promoted; Azure promotion BLOCKED by an unresolved incident.** Phase 1 (ADR 0007): OWID `energy-data` verified and ingested. Phase 2 (ADR 0008) evaluated a 3-signal energy component and decided ACCEPT. Phase 3 (ADR 0009) strengthened the evidence (2000-permutation test), tested redundancy-reduced alternatives, and froze a leaner **2-signal** production spec (`energy_component_v2.1`). `cli.score()` computes **both v1 and v2**; `cli.publish()` **requires both** and declares v2 (`score_version=v2_energy`) active, v1 permanently preserved as comparison. Verified locally end-to-end (163 tests, fail-closed tested). **Azure validation (ADR 0010) found the new image's execution reports `Succeeded` and logs a normal-looking run, but a direct ADLS Gen2 check proves none of that run's output — not even the raw ingestion snapshot — actually persisted to storage; reproduced on a second, minimal execution.** Root cause not found (RBAC, dependency drift, and the verification tooling itself were all ruled out). The Azure job has been **rolled back to the last confirmed-working pre-M6 image** (`6bafc0a`) to protect the weekly schedule until this is root-caused. See ADR 0010 for the full incident record. |
+| M6 | Energy-system transition features | **COMPLETE - production-verified in Azure.** Phase 1 (ADR 0007): OWID `energy-data` verified and ingested. Phase 2 (ADR 0008): pre-registered gate ACCEPTed the energy component (`p <= 0.10`, positive MAE improvement, weight robustness). Phase 3 (ADR 0009): 2000-permutation hardening, redundancy-reduced 2-signal spec frozen as `energy_component_v2.1`, `score_version=v2_energy`. `cli.score()` computes **both v1 and v2**; `cli.publish()` **requires both** and declares v2 active while preserving v1 as a comparison artifact. ADR 0010 records the failed `7f11e31` Azure promotion, the proven local-storage fallback root cause, the preventive invariant, the corrected `95b7fa4` image, external Entra-authenticated ADLS verification, manifest/pointer consistency, and local/Azure parity. |
 | M7 | Regime/structural-break research | Not implemented |
-| M8 | Azure runtime | **COMPLETE — production-verified.** 16 Terraform-managed resources (6 top-level Azure service resources plus their sub-resources: filesystems, role assignments, lifecycle policy, budget notifications) live in `rg-climate-risk-dev` (uksouth). Three real Container Apps Job executions have succeeded end to end against live ADLS Gen2, producing output identical to the local baseline and, since ADR 0006, a real `git_sha` in every published manifest. Weekly schedule: Monday 03:00 UTC. See `docs/finops.md`, ADR 0003–0006. |
+| M8 | Azure runtime | **COMPLETE - production-verified.** Terraform-managed resources live in `rg-climate-risk-dev` (uksouth): ADLS Gen2, four filesystems, Container Apps Environment + Job, two managed identities, RBAC, Log Analytics, lifecycle policy, and budget. Real Container Apps Job executions have succeeded end to end against live ADLS Gen2, including the M6 v2 production run `job-climate-risk-dev-pipeline-xsjvjwd`, with output identical to the local baseline and real Git/image provenance in the manifest. Weekly schedule: Monday 03:00 UTC. See `docs/finops.md`, ADR 0003-0010. |
 | M9 | Power BI semantic layer | Not implemented |
 | M10 | Read-only FastAPI serving layer | Not implemented |
 | M11 | v1 release (data revision analysis, reproducibility test, evidence bundle, governance/hardening) | Not implemented. The fail-closed `publish` barrier itself is implemented and production-verified (a prerequisite for M11, not M11 itself) — see `docs/adr/`. |
@@ -61,7 +61,7 @@ uv run climate-risk m6-evaluate     # M6 phase 2 research (ADR 0008): coverage/s
                                      # incremental-information/backtest/score-v2 gate
 uv run climate-risk m6-harden       # M6 phase 3 research (ADR 0009): strengthened permutation test,
                                      # redundancy-reduced component alternatives, lookback/origin robustness
-uv run pytest                       # 163 tests
+uv run pytest                       # 178 tests
 uv run ruff check .
 uv run mypy src
 ```
@@ -143,8 +143,8 @@ docker run --rm -v /path/to/lake:/data/lake climate-risk-pipeline:latest run
 
 Multi-stage, non-root, `python:3.12-slim` base, locked production-only deps.
 Public image on GitHub Container Registry:
-`ghcr.io/varunrout/climate-risk-pipeline:6bafc0a` (immutable git-SHA tag,
-anonymous-pull verified; the current Azure production tag — see ADR 0006).
+`ghcr.io/varunrout/climate-risk-pipeline:95b7fa4` (immutable git-SHA tag,
+anonymous-pull verified; current Azure production tag - see ADR 0010).
 Storage is backend-neutral
 (`climate_risk.storage`, see ADR 0004) — the same image runs unchanged
 against a local mounted volume or live Azure Data Lake Storage Gen2.
@@ -188,13 +188,13 @@ src/climate_risk/
   ingestion/      source adapters (OWID CO2, OWID energy-mix, World Bank) + orchestration pipeline
   transforms/     silver country-year panel + raw energy-mix table builders, atomic writers
   features/       decoupling analytics (growth rates, correlation, elasticity);
-                  energy_transition.py: diagnostic M6 features (trend/momentum/velocity/
-                  percentile), not yet wired into scoring/
+                  energy_transition.py: M6 energy features (trend/momentum/velocity/
+                  percentile), consumed by v2 scoring and also written as diagnostics
   scenarios/      deterministic trend baseline + seeded bootstrap Monte Carlo
   backtesting/    rolling-origin harness (no_change / deterministic / bootstrap vs actuals)
-  scoring/        transition risk scoring v1 (production) + weight-perturbation sensitivity;
-                  energy_component.py + risk_score_v2_energy.py: experimental M6 v2, not
-                  imported by v1 or by cli.score()/cli.publish()
+  scoring/        transition risk scoring v1 (comparison baseline) + v2_energy production;
+                  energy_component.py + risk_score_v2_energy.py preserve v1 semantics
+                  while adding the M6 production energy component
   research/       M6 phase 2 evidence-gate modules (coverage/stability/redundancy/
                   incremental-information/temporal-backtest) -- research-only, one-way
                   dependency into the existing pipeline's outputs, never the reverse

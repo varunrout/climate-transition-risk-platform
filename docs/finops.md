@@ -173,7 +173,7 @@ fixing the manifest field properly means baking the SHA in as a build-time
 ```bash
 # Stop paying for everything project-related, in one step:
 cd infra/environments/dev
-terraform destroy -var="image_tag=6bafc0a" -var="ghcr_owner=varunrout"
+terraform destroy -var="image_tag=95b7fa4" -var="ghcr_owner=varunrout"
 ```
 
 There is no per-resource "pause" step to document beyond this — every

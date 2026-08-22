@@ -1,6 +1,6 @@
 # ADR 0009: M6 phase 3 -- evidence hardening, score v2 freeze, and production promotion
 
-- Status: Accepted, promoted to production (local; Azure promotion tracked separately below)
+- Status: Accepted, promoted to production (local and Azure; final Azure closure recorded in ADR 0010)
 - Date: 2026-08-22
 
 ## Context
@@ -189,7 +189,7 @@ countries, manifest fields verified present.
 
 ## 9. Regression tests
 
-163 tests passing (was 140 before this phase; +23: strengthened
+163 tests passed at the phase-3 local freeze (was 140 before this phase; +23: strengthened
 permutation/formulation-comparison tests, lookback diagnostic tests,
 frozen-spec regression guards, and a new end-to-end CLI integration test
 file, `tests/integration/test_publish_cli_v2_gate.py`, covering: publish
@@ -210,7 +210,7 @@ correctly declaring v2 as active). `ruff check`, `ruff format --check`,
   resolved; a robust-estimator alternative was tested and didn't help),
   and the 2014->2019 origin's negative energy-feature contribution. Both
   are documented here rather than smoothed over.
-- Azure has **not** yet run this. Docker image build/push, Terraform
-  update, and one manual Azure execution are the remaining steps before
-  M6 can be marked COMPLETE -- tracked in the sections below / the final
-  report.
+- Azure production promotion is now complete via ADR 0010: the corrected
+  `95b7fa4` image ran as `job-climate-risk-dev-pipeline-xsjvjwd`, externally
+  persisted ADLS outputs were verified with Entra-authenticated Azure CLI,
+  and local/Azure parity matched. M6 is COMPLETE; M7 is the next milestone.

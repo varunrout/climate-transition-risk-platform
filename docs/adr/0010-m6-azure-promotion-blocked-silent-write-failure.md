@@ -1,6 +1,6 @@
 # ADR 0010: M6 Azure promotion blocked -- reproducible silent-write incident
 
-- Status: Accepted (incident record, root cause proven; preventive fix implemented locally). M6 Azure promotion is **NOT complete** until a new image is built and verified in Azure.
+- Status: Accepted (incident record preserved; root cause fixed; M6 Azure promotion complete).
 - Date: 2026-08-22
 
 ## Context
@@ -71,11 +71,12 @@ delay.
   working run (`git diff 6bafc0a..7f11e31 -- uv.lock` is empty) -- the
   `--frozen` install in the Dockerfile guarantees identical
   fsspec/adlfs/pandas/pyarrow versions in both images.
-- **Not env-var loss from the `az containerapp job start --image ...
-  --command ... --args ...` override**: `validate-config`'s own output in
-  the same overridden execution correctly read `CLIMATE_RISK_CONFIG_DIR=/app/config`
-  (the container-only path), which would fail if the override had dropped
-  the job template's env block.
+- **Superseded inference about env-var loss**: the first investigation treated
+  `validate-config` seeing `CLIMATE_RISK_CONFIG_DIR=/app/config` as evidence
+  that the job-template env block survived the override. The follow-up proved
+  that inference wrong: `CLIMATE_RISK_CONFIG_DIR=/app/config` is baked into the
+  Dockerfile, while the four ADLS zone-root env vars were absent from the
+  failed execution template.
 - **Not the verification tooling**: a live write/read/delete round trip
   against the same storage account via the same account-key auth path
   succeeded instantly.
@@ -174,37 +175,88 @@ Terraform CLI was not installed on the local machine used for this
 follow-up, so `terraform fmt`/`terraform validate` could not be rerun here.
 No Terraform files were changed by the corrective fix.
 
+## Final Azure promotion and external verification
+
+The corrected image was built from commit
+`95b7fa4ef0a0af82f99818276865039ff54cb017`, pushed as
+`ghcr.io/varunrout/climate-risk-pipeline:95b7fa4`, and anonymous-pull
+verified at digest
+`sha256:75a77ec0d6c02a28db1fb09e72be48caf9d8c269d63b2b56af33b59b29943dcd`.
+Terraform plan/apply for promotion was exactly **0 add, 1 change, 0
+destroy**: only the Container Apps Job image and provenance env vars
+changed. A post-apply Terraform plan reported no changes.
+
+Controlled Azure execution `job-climate-risk-dev-pipeline-xsjvjwd` ran the
+Terraform-managed template (no per-execution image/command/env override)
+with image `95b7fa4`, `args=["run"]`, 0.5 vCPU, 1Gi memory, retry limit 1,
+and the existing user-assigned managed identity. Log Analytics confirms
+all four zones selected `AzureStorageBackend`, all three sources ingested,
+energy silver/features built, backtest completed, v1 and v2 scores wrote,
+and publish completed with active score version `v2_energy`. The in-job
+durable verifier then re-read required artifacts and reported pointer run
+id `fad0a51c-280f-48b5-9f94-4cba6d05e9cb`, manifest path
+`manifests/fad0a51c-280f-48b5-9f94-4cba6d05e9cb.json`, score version
+`v2_energy`, raw snapshots 7, raw manifests 7, bronze artifacts 3, silver
+transition 1, and silver energy 1.
+
+After the signed-in Azure user was granted `Storage Blob Data Reader` on
+`stclimateriskdev01`, independent Azure CLI verification using
+`--auth-mode login` (Entra auth only; no storage keys, SAS, or connection
+strings) listed and downloaded the production artifacts externally. ADLS
+listing counts were raw 27, bronze 9, silver 8, gold 12. The externally
+read `latest_successful_run.json` points to
+`fad0a51c-280f-48b5-9f94-4cba6d05e9cb`; the referenced manifest is readable
+and declares:
+
+- `git_sha`: `95b7fa4ef0a0af82f99818276865039ff54cb017`
+- image ref: `ghcr.io/varunrout/climate-risk-pipeline:95b7fa4`
+- image digest:
+  `sha256:75a77ec0d6c02a28db1fb09e72be48caf9d8c269d63b2b56af33b59b29943dcd`
+- `score_version`: `v2_energy`
+- `component_version`: `energy_component_v2.1`
+- `weights_version`: `v2_weights_v1`
+- source snapshot IDs: OWID CO2 `7f78e2b218ce4bb8`, World Bank WDI
+  `21cb9294d95abbb2`, OWID Energy `77b3db513f02f5ff`
+- `config_hash`: `ac4bfcb823d938d3`
+- `azure_job_execution_id`: `job-climate-risk-dev-pipeline-xsjvjwd`
+- `publish_status`: `PUBLISHED`
+
+Because the source checksums matched the local validation baseline, strict
+local/Azure parity was required and passed for the externally downloaded
+Azure artifacts: silver transition table (3763 rows), silver energy table
+(2307 rows), v1 score (19 rows), v2 score (19 rows), energy features (19
+rows), and backtest summary (3 rows). Snapshot IDs, energy feature values,
+v1/v2 scores and ranks, component contributions, weight coverage, data
+confidence, backtest metrics, config hash, and score version all matched
+the local baseline.
+
+Fail-closed publication is externally verified: `latest_successful_run.json`
+points to the current valid manifest, the required score artifacts
+`country_transition_risk.parquet` and `country_transition_risk_v2.parquet`
+exist, and v2 is the declared active production score. This remains
+governance-consistent because ADR 0008's pre-registered rule was
+permutation `p <= 0.10`, positive MAE improvement, and weight robustness;
+ADR 0009's hardened result remains within that rule.
+
 ## Action taken
 
-Given a job that reports `Succeeded` while silently not persisting any
-output is a *worse* failure mode than an honest crash (it defeats
-monitoring and would let the fail-closed publish barrier's own
-`gold.exists(...)` checks pass against ghost state within the same
-process, without any of it being real), the M6-phase-3 image was **not**
-left as the production pointer. Terraform was re-applied to roll the
-Container Apps Job's image back to the last confirmed-working image,
-`ghcr.io/varunrout/climate-risk-pipeline:6bafc0a` (0 add, 1 change, 0
-destroy, applied cleanly). The weekly schedule (Monday 03:00 UTC) will run
-the pre-M6 image, which ADR 0006 already verified persists real v1 output,
-until this incident is root-caused and a fix is verified with the same
-level of direct-storage scrutiny used to find it.
+The failed `7f11e31` image was rolled back immediately to `6bafc0a` to
+protect the weekly schedule while the incident was investigated. After the
+root cause was proven, the storage invariant and durable verifier were
+implemented, tested, built into image `95b7fa4`, deployed through Terraform,
+and validated by the controlled Azure execution and external ADLS parity
+checks above.
 
 ## Consequences
 
-- **M6 is locally complete and production-promoted (ADR 0009) but NOT
-  Azure-complete.** `cli.score()`/`cli.publish()` compute and require v1+v2
-  correctly on every local run (163 tests, full local pipeline verified).
-  Azure currently still runs the pre-M6 image and produces v1-only output,
-  as it did before this session.
-- No local/Azure parity comparison could be performed (section 14 of the
-  M6-phase-3 brief) -- there is no real M6-phase-3 Azure output to compare
-  against local output.
-- The follow-up investigation proved the root cause above and implemented the
-  local preventive fix. A new Azure image/promotion is still required before
-  M6 can be marked Azure-complete.
-- No new Azure services or infrastructure were added or left running;
-  resource inventory is unchanged from ADR 0006 (still the same job,
-  storage account, identities, budget). Cost impact of the two diagnostic
-  executions run during this investigation: negligible (Consumption-plan
-  Container Apps Jobs billed per execution-second; three short executions,
-  well under a minute of vCPU-time each).
+- **M6 is COMPLETE.** The final score decision is ACCEPT, the frozen
+  `energy_component_v2.1` / `v2_energy` specification is active in Azure,
+  v1 artifacts remain preserved as comparison outputs, and the silent-success
+  incident now has a fail-fast preventive invariant plus durable success
+  verification.
+- No new Azure services were added. The live resource inventory remains the
+  same low-cost set: storage account, two managed identities, Log Analytics,
+  Container Apps Environment, and Container Apps Job. Compute remains 0.5
+  vCPU / 1Gi memory, retry limit 1, timeout 30 minutes, weekly Monday 03:00
+  UTC schedule.
+- The exact next milestone is **M7 structural-break / regime research**.
