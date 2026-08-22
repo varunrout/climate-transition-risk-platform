@@ -22,7 +22,7 @@ there is not claimed here until it is implemented, tested, and committed.
 | M5 | Transition risk scoring v1 (4 of 5 components), rank stability | **Implemented** |
 | M6 | Ember energy-transition features | Not implemented (source gated `pending_verification`, disabled) |
 | M7 | Regime/structural-break research | Not implemented |
-| M8 | Azure infrastructure (Terraform) | **Deployed and verified.** 16 resources live in `rg-climate-risk-dev` (uksouth). A real Container Apps Job execution ran the full pipeline end to end against live ADLS Gen2 and produced output identical to the local baseline. `trigger_type` is `Manual` — recurring scheduling not yet enabled. See `docs/finops.md`, ADR 0003–0005. |
+| M8 | Azure infrastructure (Terraform) | **Deployed, verified, and running on a recurring schedule.** 16 resources live in `rg-climate-risk-dev` (uksouth). Three real Container Apps Job executions have succeeded end to end against live ADLS Gen2, producing output identical to the local baseline and, since ADR 0006, a real `git_sha` in every published manifest. Weekly schedule: Monday 03:00 UTC. See `docs/finops.md`, ADR 0003–0006. |
 | M9 | Power BI semantic layer | Not implemented |
 | M10 | Read-only FastAPI serving layer | Not implemented |
 | M11 | End-to-end `publish` wiring | **Implemented** — fail-closed, verified on the real CLI path (see `docs/adr/`) |
@@ -130,13 +130,22 @@ retention), two least-privilege managed identities (the job's identity
 authenticates to ADLS via `ManagedIdentityCredential` only — no keys/SAS
 anywhere), and a Cost Management budget with 50/80/100% alerts.
 
-A real Container Apps Job execution (`job-climate-risk-dev-pipeline-zpj4lut`,
-58s) ran the full pipeline — ingestion → silver → backtest → score →
-publish — end to end against live ADLS Gen2 storage, producing output
-identical to the local baseline (same `snapshot_set_id`, same backtest
-metrics, same country scores; see ADR 0005). `trigger_type` remains
-`Manual` — recurring weekly scheduling has not been enabled. Full cost
-breakdown, guardrails, and resume/shutdown commands:
+Three real Container Apps Job executions have run the full pipeline —
+ingestion → silver → backtest → score → publish — end to end against live
+ADLS Gen2 storage, each producing output identical to the local baseline
+(same `snapshot_set_id`, same backtest metrics, same country scores; see
+ADR 0005, ADR 0006). The published manifest now carries a real `git_sha`
+(baked in at image build time via a `GIT_SHA` Docker build-arg — `.git`
+itself is never copied into the image), alongside the image ref/digest and
+`azure_job_execution_id`.
+
+**Recurring execution is enabled**: `trigger_type = "Schedule"`, weekly,
+**Monday 03:00 UTC** — matches OWID's and World Bank's own weekly/monthly
+refresh cadence (`config/sources.yaml`), so more frequent runs would only
+cost more for no fresher data. Compute size, retry limit (1), and timeout
+(30 min) are unchanged from the manually-triggered configuration; enabling
+the schedule changed *when* the job runs, not its size or cost profile.
+Full cost breakdown, guardrails, and resume/shutdown commands:
 [docs/finops.md](docs/finops.md).
 
 ## Repository layout

@@ -1,13 +1,14 @@
 # FinOps: cost design, guardrails, and shutdown runbook
 
-**Status: DEPLOYED and verified working (2026-08-22).** 16 resources
-applied to `rg-climate-risk-dev` (`uksouth`). A real Container Apps Job
-execution ran the full pipeline end to end against live ADLS Gen2 storage
-and produced correct output (ADR 0005). `trigger_type` remains `Manual` —
-recurring scheduling has not been enabled. Costs below are estimates from
-the Terraform configuration and public Azure pricing; Cost Management's
-`currentSpend` reports £0.00 so far (billing data lags actual usage by
-hours).
+**Status: DEPLOYED, VERIFIED, and RUNNING ON A RECURRING SCHEDULE
+(2026-08-22).** 16 resources applied to `rg-climate-risk-dev` (`uksouth`).
+Three real Container Apps Job executions have run the full pipeline end to
+end against live ADLS Gen2 storage and produced correct output (ADR 0005,
+ADR 0006), the last one confirming a real `git_sha` in the published
+manifest. `trigger_type = "Schedule"`, weekly, **Monday 03:00 UTC**.
+Costs below are estimates from the Terraform configuration and public
+Azure pricing; Cost Management's `currentSpend` reports £0.00 so far
+(billing data lags actual usage by hours).
 
 ## Target cost
 
@@ -186,21 +187,23 @@ instruction every time.
 ## Recovery path
 
 ```bash
-# 1. Push the pipeline image to GHCR (public, free)
-docker build -t ghcr.io/<owner>/climate-transition-risk:<git-sha> .
+# 1. Push the pipeline image to GHCR (public, free). --build-arg GIT_SHA
+# is what populates the manifest's git_sha field (ADR 0006) and the
+# org.opencontainers.image.revision OCI label -- without it both fall back
+# to empty/null, not an error, but worth not forgetting.
+docker build --build-arg GIT_SHA=$(git rev-parse HEAD) -t ghcr.io/<owner>/climate-risk-pipeline:$(git rev-parse --short HEAD) .
 echo "$GHCR_TOKEN" | docker login ghcr.io -u <owner> --password-stdin
-docker push ghcr.io/<owner>/climate-transition-risk:<git-sha>
-docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/<owner>/climate-transition-risk:<git-sha>  # capture digest for provenance
+docker push ghcr.io/<owner>/climate-risk-pipeline:<git-sha>
+docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/<owner>/climate-risk-pipeline:<git-sha>  # capture digest for provenance
 
 # 2. Recreate infrastructure from code
 cd infra/environments/dev
 terraform apply -var="image_tag=<git-sha>" -var="ghcr_owner=<owner>" -var="image_digest=<sha256:...>"
 
-# 3. Manually trigger one smoke-test run
+# 3. The job is already on trigger_type = "Schedule" (weekly, Monday 03:00
+# UTC) by default -- it will run automatically. To force one run sooner:
 az containerapp job start --name job-climate-risk-dev-pipeline \
   --resource-group rg-climate-risk-dev
-
-# 4. Once verified, switch trigger_type = "Schedule" and re-apply
 ```
 
 Raw snapshots re-fetch from OWID/World Bank; bronze/silver/gold/scores/
@@ -214,9 +217,15 @@ mechanism ADR 0002 uses to reproduce the 2015→2022 backtest locally).
 - Storage: `allow_nested_items_to_be_public = false`, HTTPS-only, 7-day
   soft-delete (not indefinite)
 - Container Apps Job: `replica_retry_limit = 1` (no retry storms),
-  0.5 vCPU / 1Gi (smallest sensible size for a pandas/numpy/scipy job),
-  `Manual` trigger by default (a human decides when the first real run
-  happens; `Schedule` is opt-in after that succeeds)
+  0.5 vCPU / 1Gi (smallest sensible size for a pandas/numpy/scipy job,
+  unchanged since first deployment -- enabling the schedule did not
+  increase compute size), `trigger_type = "Schedule"` (weekly, Monday
+  03:00 UTC -- evaluated in UTC, Azure's fixed behaviour for Container
+  Apps Jobs cron schedules, not configurable per-job). Reaching this state
+  required two manual smoke tests to succeed first (ADR 0005, ADR 0006) --
+  `trigger_type` is immutable in Azure's schema, so this change replaced
+  the job resource (0 data loss: the job holds no state) rather than
+  updating it in place.
 - Log Analytics: `daily_quota_gb = 0.1` hard cap — a looping/noisy job
   stops sending logs rather than running up an open-ended ingestion bill
 - Managed identities scoped narrowly: the job identity gets exactly one

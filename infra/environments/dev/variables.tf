@@ -45,8 +45,17 @@ variable "ghcr_image_name" {
 }
 
 variable "job_trigger_type" {
-  type    = string
-  default = "Manual" # switch to "Schedule" only after a successful manual smoke test
+  type = string
+  # Two manual smoke tests succeeded end to end against real ADLS Gen2
+  # storage (ADR 0005, ADR 0006) -- "Schedule" is now the steady baseline,
+  # not an override. Weekly cadence, Monday 03:00 UTC: matches OWID's and
+  # World Bank's own weekly/monthly refresh_check cadence
+  # (config/sources.yaml) -- more frequent execution would only cost more
+  # for no fresher data. NOTE: azurerm_container_app_job's trigger_type is
+  # immutable -- changing this value forces destroy+recreate of the job
+  # resource (no data loss: the job holds no state, everything lives in
+  # the untouched storage account) rather than an in-place update.
+  default = "Schedule"
 }
 
 variable "log_retention_days" {
