@@ -16,15 +16,16 @@ there is not claimed here until it is implemented, tested, and committed.
 |---|---|---|
 | M0 | Repo foundation: package layout, config, logging, CLI, CI, tests | **Implemented** |
 | M1 | OWID CO2 + World Bank WDI ingestion (real adapters, manifests, checksums) | **Implemented** |
-| M2 | Silver country-year panel (dimension, unit normalisation, completeness) | Not implemented |
-| M3 | Decoupling analytics, deterministic + bootstrap scenario engine | Not implemented |
-| M4 | Rolling-origin backtesting harness | Not implemented |
-| M5 | Transition risk scoring, country profiles | Not implemented |
+| M2 | Silver country-year panel (dimension, unit normalisation, completeness) | **Implemented** |
+| M3 | Decoupling analytics, deterministic + bootstrap scenario engine | **Implemented** (library only; not yet CLI-wired) |
+| M4 | Rolling-origin backtesting harness | **Implemented** |
+| M5 | Transition risk scoring v1 (4 of 5 components), rank stability | **Implemented** |
 | M6 | Ember energy-transition features | Not implemented (source gated `pending_verification`, disabled) |
 | M7 | Regime/structural-break research | Not implemented |
-| M8 | Azure infrastructure (Terraform) | Not implemented — see `infra/` for plan-only scaffolding once added |
+| M8 | Azure infrastructure (Terraform) | Not implemented — no Azure discovery or `infra/` yet |
 | M9 | Power BI semantic layer | Not implemented |
 | M10 | Read-only FastAPI serving layer | Not implemented |
+| M11 | End-to-end `publish` wiring | Not implemented (barrier itself is implemented and tested) |
 
 Ember is disabled in `config/sources.yaml` (`licence_review_status:
 pending_verification`) because its exact licence, attribution wording and
@@ -38,7 +39,11 @@ to let a non-`approved` source influence production output.
 uv sync --all-extras
 uv run climate-risk validate-config
 uv run climate-risk ingest          # fetches real OWID + World Bank data
-uv run pytest
+uv run climate-risk build-silver    # joins into the country-year panel
+uv run climate-risk backtest        # rolling-origin evaluation, 6 origins
+uv run climate-risk score           # transition risk scoring v1
+uv run climate-risk run             # chains all of the above
+uv run pytest                       # 53 tests
 uv run ruff check .
 uv run mypy src
 ```
@@ -52,14 +57,40 @@ FATAL data-quality event fired — promotes a standardised Parquet snapshot to
 A rejected snapshot stays quarantined under `raw/`; it never overwrites the
 previously accepted bronze snapshot.
 
-`build-silver`, `features`, `model`, `backtest`, `score` and `publish` are
-CLI commands that exist but intentionally exit with `NotImplementedError`
-rather than fabricate output — see `src/climate_risk/cli.py`.
+`build-silver` joins the latest accepted OWID + World Bank bronze into
+`dim_country` and `fact_country_year_transition` (World Bank GDP as the
+primary constant-price series; OWID GDP kept only as a secondary column).
+
+`backtest` runs 6 rolling origins (2010→2015 … 2017→2022) across all 19
+countries against three candidate models (no-change, deterministic trend,
+empirical bootstrap) and writes `gold/backtest_country_origin.parquet` +
+`gold/backtest_summary.parquet`. See
+[docs/adr/0002-backtest-reproduction-vs-scratch.md](docs/adr/0002-backtest-reproduction-vs-scratch.md)
+for the reproduction of the documented 2015→2022 scratch experiment: the
+bootstrap's median absolute error (0.0262) closely matches the scratch
+figure (≈0.0263); 90% interval coverage (76.3% across 114 splits) does
+**not** reproduce the scratch's ≈84.2% and is reported as a genuine,
+unresolved undercoverage finding — not tuned away.
+
+`score` computes transition risk scoring v1 — 4 of the 5 nominal components
+(energy-system transition excluded because Ember is disabled) — with
+weight-perturbation rank-stability analysis, and writes
+`gold/country_transition_risk.parquet` + `gold/rank_stability.json`. Every
+row carries `weight_coverage=0.8` so a partial score is never presented as
+a complete one.
+
+`features`/`model` exist as tested library functions
+(`climate_risk.features.decoupling`, `climate_risk.scenarios.engine`) but
+are not yet wired as standalone CLI commands (their logic runs inside
+`backtest` and `score`). `publish` is a CLI command that exists but exits
+with `NotImplementedError` rather than fabricate output — see
+`src/climate_risk/cli.py`.
 
 The fail-closed **publishing barrier** (`src/climate_risk/publishing/barrier.py`)
 is implemented and tested: `latest_successful_run.json` is only ever updated
 by a `SUCCEEDED` run, so a failed or in-progress run can never overwrite the
 previously published release. See `tests/unit/test_publishing_barrier.py`.
+It is not yet wired into the `publish` CLI command.
 
 ## Repository layout
 
@@ -68,17 +99,22 @@ src/climate_risk/
   config/         typed config models + YAML loader (sources.yaml, countries.yaml, quality_rules.yaml)
   contracts/      pydantic domain models: manifests, validation events, run metadata
   ingestion/      source adapters (OWID, World Bank) + orchestration pipeline
+  transforms/     silver country-year panel builder + atomic writers
+  features/       decoupling analytics (growth rates, correlation, elasticity)
+  scenarios/      deterministic trend baseline + seeded bootstrap Monte Carlo
+  backtesting/    rolling-origin harness (no_change / deterministic / bootstrap vs actuals)
+  scoring/        transition risk scoring v1 + weight-perturbation sensitivity
   quality/        quality rule registry + publish-gate logic
   publishing/     fail-closed latest_successful_run barrier
   observability/  structured logging (structlog)
-  transforms/ features/ regimes/ scenarios/ backtesting/ scoring/ api/  (scaffolded, not yet implemented)
+  regimes/ api/   scaffolded, not yet implemented
 config/           versioned YAML: sources, countries, quality rules
 tests/
-  unit/           pure logic
+  unit/           pure logic (config, quality, publishing, decoupling, scenarios, backtesting, scoring)
   contracts/      adapter standardisation + quality-check contracts, adversarial fixtures
-  integration/    full ingest pipeline against local fixtures (no network required)
-docs/adr/         architectural decision records
-infra/            Terraform (Azure) — added incrementally, plan-reviewed before any apply
+  integration/    full ingest/silver pipelines against local fixtures (no network required)
+docs/adr/         architectural decision records, including the backtest reproduction finding
+infra/            not yet created — Azure discovery and Terraform are the next milestone
 ```
 
 ## Design source of truth
