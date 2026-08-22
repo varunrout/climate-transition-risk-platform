@@ -30,7 +30,7 @@ from climate_risk.contracts.models import (
     IngestStatus,
     QualitySeverity,
 )
-from climate_risk.contracts.run import current_git_commit
+from climate_risk.contracts.run import resolve_git_sha
 from climate_risk.ingestion.base import SourceAdapter
 from climate_risk.observability.logging import get_logger
 from climate_risk.storage import LakeStorage, write_parquet, write_text
@@ -71,7 +71,7 @@ def run_ingest(adapter: SourceAdapter, *, lake: LakeStorage, run_id: str) -> Ing
         sha256=artifact.sha256,
         schema_fingerprint=schema_fingerprint,
         parser_version=adapter.parser_version,
-        git_commit=current_git_commit(),
+        git_commit=resolve_git_sha(),
         status=status,
         row_count=row_count,
         validation=quality_report,

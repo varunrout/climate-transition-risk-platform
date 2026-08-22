@@ -7,6 +7,7 @@ audit trail the honesty rule in the spec depends on.
 
 from __future__ import annotations
 
+import os
 import subprocess
 import uuid
 from datetime import UTC, datetime
@@ -25,7 +26,30 @@ def new_run_id() -> str:
     return str(uuid.uuid4())
 
 
-def current_git_commit() -> str | None:
+def resolve_git_sha(env: dict[str, str] | None = None) -> str | None:
+    """Provenance resolver, in order:
+
+    1. CLIMATE_RISK_GIT_SHA -- set at image build time (Dockerfile ARG/ENV,
+       baked in from the actual `git rev-parse HEAD` used for that build).
+       This is the only reliable source once the container is running: the
+       production image deliberately does not contain `.git` (bloat, and
+       no reason to ship repo history), so a runtime `git` subprocess call
+       inside the container can never see one.
+    2. `git rev-parse HEAD` -- works when running from a local checkout
+       (dev machine, CI without the container, `uv run climate-risk ...`).
+    3. `None` -- genuinely unavailable; the manifest field stays null
+       rather than fabricating a value.
+
+    Never inferred by parsing the GHCR image tag: the tag is a *label* a
+    deploy step chooses to apply (defensibly a git SHA today, but the code
+    has no way to prove that without trusting an external convention), not
+    provenance the running process itself can attest to.
+    """
+    env = env if env is not None else dict(os.environ)
+    explicit = env.get("CLIMATE_RISK_GIT_SHA")
+    if explicit:
+        return explicit
+
     try:
         result = subprocess.run(
             ["git", "rev-parse", "HEAD"],
@@ -60,7 +84,7 @@ class PipelineRun(BaseModel):
         return cls(
             run_id=new_run_id(),
             started_at=datetime.now(UTC),
-            git_commit=current_git_commit(),
+            git_commit=resolve_git_sha(),
         )
 
     def succeed(self, *, release_id: str | None = None) -> None:
