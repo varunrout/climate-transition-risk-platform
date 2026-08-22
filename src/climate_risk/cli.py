@@ -62,7 +62,7 @@ def ingest(
     from climate_risk.ingestion.world_bank import WorldBankAdapter
 
     log = get_logger(stage="ingest")
-    paths = RunPaths.from_env({"CLIMATE_RISK_LAKE_ROOT": lake_root} if lake_root else {})
+    paths = RunPaths.from_env({"CLIMATE_RISK_LAKE_ROOT": lake_root} if lake_root else None)
     paths.ensure_zones()
 
     registry = load_source_registry()
@@ -117,7 +117,7 @@ def build_silver(
     from climate_risk.transforms.writer import write_dim_country, write_fact_country_year_transition
 
     log = get_logger(stage="build-silver")
-    paths = RunPaths.from_env({"CLIMATE_RISK_LAKE_ROOT": lake_root} if lake_root else {})
+    paths = RunPaths.from_env({"CLIMATE_RISK_LAKE_ROOT": lake_root} if lake_root else None)
     paths.ensure_zones()
 
     panel, snapshot_set_id, report = build_silver_panel(paths)
@@ -170,7 +170,7 @@ def backtest(
     from climate_risk.backtesting.rolling_origin import run_backtest, summarise_metrics
 
     log = get_logger(stage="backtest")
-    paths = RunPaths.from_env({"CLIMATE_RISK_LAKE_ROOT": lake_root} if lake_root else {})
+    paths = RunPaths.from_env({"CLIMATE_RISK_LAKE_ROOT": lake_root} if lake_root else None)
 
     fact_dirs = sorted(
         glob.glob(str(paths.silver / "fact_country_year_transition" / "snapshot_set_id=*"))
@@ -223,7 +223,7 @@ def score(
     )
 
     log = get_logger(stage="score")
-    paths = RunPaths.from_env({"CLIMATE_RISK_LAKE_ROOT": lake_root} if lake_root else {})
+    paths = RunPaths.from_env({"CLIMATE_RISK_LAKE_ROOT": lake_root} if lake_root else None)
 
     fact_dirs = sorted(
         glob.glob(str(paths.silver / "fact_country_year_transition" / "snapshot_set_id=*"))
@@ -296,7 +296,7 @@ def publish(
     from climate_risk.scoring.risk_score import EFFECTIVE_WEIGHTS
 
     log = get_logger(stage="publish")
-    paths = RunPaths.from_env({"CLIMATE_RISK_LAKE_ROOT": lake_root} if lake_root else {})
+    paths = RunPaths.from_env({"CLIMATE_RISK_LAKE_ROOT": lake_root} if lake_root else None)
     run = PipelineRun.start()
     log = log.bind(run_id=run.run_id)
 

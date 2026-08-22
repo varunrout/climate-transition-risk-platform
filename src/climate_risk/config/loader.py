@@ -16,7 +16,13 @@ import yaml
 from climate_risk.config.models import CountryConfig, SourceConfig
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-CONFIG_DIR = REPO_ROOT / "config"
+# In a repo checkout (editable install) config/ sits 3 levels above this file.
+# In the production container the package is installed non-editable into a
+# venv's site-packages, so that relationship no longer holds -- the
+# Dockerfile copies config/ to /app/config and sets CLIMATE_RISK_CONFIG_DIR
+# accordingly. Read once at import time: it must be set before the process
+# starts, which is how container ENV and shell exports both work.
+CONFIG_DIR = Path(os.environ.get("CLIMATE_RISK_CONFIG_DIR", str(REPO_ROOT / "config")))
 
 
 @dataclass(frozen=True, slots=True)
