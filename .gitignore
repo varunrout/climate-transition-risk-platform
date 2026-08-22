@@ -27,7 +27,8 @@ infra/azure-discovery.json
 infra/**/*.tfstate
 infra/**/*.tfstate.backup
 infra/**/.terraform/
-infra/**/.terraform.lock.hcl
+# .terraform.lock.hcl is deliberately NOT ignored -- it pins provider
+# versions and Terraform itself asks you to commit it.
 *.tfvars
 
 .DS_Store
