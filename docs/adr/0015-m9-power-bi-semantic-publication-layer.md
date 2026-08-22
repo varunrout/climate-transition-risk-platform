@@ -2,8 +2,16 @@
 
 ## Status
 
-Accepted for code/data layer. Power BI Desktop visual assembly remains pending
-because Power BI Desktop is not available in the current execution environment.
+Accepted for code/data layer. A source-controlled PBIP project
+(`powerbi/ClimateTransitionRisk.pbip`) implementing this semantic model --
+9 tables, 9 relationships, 28 measures, 7 report pages/49 visuals -- has
+since been authored (see `docs/powerbi/native_report_status.md`), but
+Power BI Desktop visual assembly/validation remains pending because Power
+BI Desktop is not available in the current execution environment: the
+project has been internally cross-checked (JSON validity, TMDL structure,
+every visual's field references resolved against real columns/measures,
+every relationship resolved) but has never actually been opened in
+Desktop.
 
 ## Context
 

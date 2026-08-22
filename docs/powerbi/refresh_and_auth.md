@@ -16,6 +16,13 @@ Power BI Desktop can import the files from:
 data/lake/gold/bi/
 ```
 
+The native project (`powerbi/ClimateTransitionRisk.pbip`) reads this path
+through a single Power Query text parameter, `GoldBiFolderPath`, referenced
+by every table's `Parquet.Document(File.Contents(...))` partition, rather
+than a literal path hardcoded per table -- update that one parameter
+(Transform data > Manage Parameters) to point at your local repo checkout's
+`data/lake/gold/bi/` folder.
+
 This requires no paid Power BI or Azure service.
 
 ### Cloud Refresh Mode
