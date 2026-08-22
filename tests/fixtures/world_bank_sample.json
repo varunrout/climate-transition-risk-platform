@@ -1,0 +1,14 @@
+{
+  "NY.GDP.MKTP.KD": [
+    {"countryiso3code": "USA", "date": "2019", "value": 20328833000000.0},
+    {"countryiso3code": "USA", "date": "2020", "value": 19856000000000.0},
+    {"countryiso3code": "CHN", "date": "2019", "value": 13894817000000.0},
+    {"countryiso3code": "CHN", "date": "2020", "value": 14504927000000.0}
+  ],
+  "SP.POP.TOTL": [
+    {"countryiso3code": "USA", "date": "2019", "value": 328239523},
+    {"countryiso3code": "USA", "date": "2020", "value": 331526933},
+    {"countryiso3code": "CHN", "date": "2019", "value": 1407745000},
+    {"countryiso3code": "CHN", "date": "2020", "value": null}
+  ]
+}

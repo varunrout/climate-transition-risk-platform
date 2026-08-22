@@ -1,0 +1,33 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.uv/
+uv.lock.tmp
+.mypy_cache/
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# local data lake (raw/bronze/silver/gold) — never committed
+data/lake/
+artifacts/*
+!artifacts/.gitkeep
+
+# environment and cloud discovery output — may contain subscription/tenant IDs
+.env
+.env.*
+infra/azure-discovery.json
+infra/**/*.tfstate
+infra/**/*.tfstate.backup
+infra/**/.terraform/
+infra/**/.terraform.lock.hcl
+*.tfvars
+
+.DS_Store

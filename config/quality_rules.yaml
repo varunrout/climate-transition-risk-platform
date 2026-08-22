@@ -1,0 +1,41 @@
+# Quality rule registry per 08_data_quality_and_validation.md section 4.
+# rule_id -> {description, severity}. climate_risk.quality.rules.load_rule_registry
+# loads this file; adapters and the silver builder reference rule_id when they
+# emit a ValidationEvent so severity is centrally governed, not hard-coded.
+rules:
+  DQ-TRANSPORT-001:
+    description: "Non-200 HTTP status on source fetch"
+    severity: FATAL
+  DQ-TRANSPORT-002:
+    description: "Zero-byte payload"
+    severity: FATAL
+  DQ-TRANSPORT-003:
+    description: "HTML error page returned as a nominal 200 response"
+    severity: FATAL
+  DQ-OWID-001:
+    description: "OWID CO2 dataset missing a required column"
+    severity: FATAL
+  DQ-WB-001:
+    description: "World Bank WDI response missing a required indicator field"
+    severity: FATAL
+  DQ-PANEL-010:
+    description: "Duplicate (country_iso3, year) key within one snapshot set"
+    severity: FATAL
+  DQ-PANEL-011:
+    description: "Non-sovereign aggregate region leaked into the country panel"
+    severity: FATAL
+  DQ-GDP-020:
+    description: "Missing GDP in latest source year (known reporting lag)"
+    severity: WARN
+  DQ-COUNTRY-030:
+    description: "Country row failed a country-scoped rule and is excluded from model output"
+    severity: ERROR
+  DQ-COUNTRY-031:
+    description: "A core G20 country is unexpectedly absent from a source"
+    severity: FATAL
+  DQ-SCORE-030:
+    description: "Score component outside its declared [0, 100] range"
+    severity: FATAL
+  DQ-SCENARIO-040:
+    description: "Scenario quantiles are not monotonic (p05 <= p50 <= p95)"
+    severity: FATAL
