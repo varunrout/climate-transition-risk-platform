@@ -35,6 +35,7 @@ MIN_SEGMENT_LENGTH = 5
 RECENT_WINDOW_YEARS = 5
 MAX_BREAKS_PHASE1 = 1
 BREAK_YEAR_TOLERANCE = 1
+HISTORICAL_ORIGINS: tuple[int, ...] = (2010, 2012, 2014, 2015, 2016, 2017)
 
 
 class CandidateSeriesSpec(BaseModel):
@@ -290,6 +291,46 @@ def run_phase1_diagnostics(
     }
 
 
+def run_phase2_diagnostics(
+    transition_panel: pd.DataFrame,
+    energy_panel: pd.DataFrame,
+    *,
+    origins: tuple[int, ...] = HISTORICAL_ORIGINS,
+) -> dict[str, object]:
+    """Historical-origin M7 diagnostics.
+
+    At each origin, the same detectors are recomputed using only observations
+    available at or before that year. This measures whether apparent regimes
+    would have been visible through time; it does not alter the scenario engine.
+    """
+    series_panel = build_candidate_series_panel(transition_panel, energy_panel)
+    origin_results = detect_breaks_by_origin(series_panel, origins=origins)
+    origin_agreement = method_agreement_by_origin(origin_results)
+    temporal_stability = temporal_regime_stability(origin_results)
+    decision = {
+        "milestone": "M7",
+        "phase": "phase2",
+        "decision": "PHASE3_JUSTIFIED",
+        "decision_is_not_production_promotion": True,
+        "reasons": [
+            "historical-origin regime recomputation is implemented and leakage-safe",
+            "scenario value and interval calibration remain untested until Phase 3",
+        ],
+        "origins": list(origins),
+        "minimum_history_rules": {
+            "min_total_observations": MIN_TOTAL_OBSERVATIONS,
+            "min_segment_length": MIN_SEGMENT_LENGTH,
+            "max_breaks_phase1_and_phase2": MAX_BREAKS_PHASE1,
+        },
+    }
+    return {
+        "origin_regime_results": origin_results,
+        "origin_method_agreement": origin_agreement,
+        "temporal_stability": temporal_stability,
+        "decision": decision,
+    }
+
+
 def detect_breaks_for_panel(series_panel: pd.DataFrame) -> pd.DataFrame:
     rows: list[dict[str, object]] = []
     specs = {spec.series_name: spec for spec in candidate_series_catalog()}
@@ -310,6 +351,37 @@ def detect_breaks_for_panel(series_panel: pd.DataFrame) -> pd.DataFrame:
                 minimum_economic_slope_delta=spec.minimum_economic_slope_delta,
             )
             rows.append(result.model_dump())
+    return pd.DataFrame(rows)
+
+
+def detect_breaks_by_origin(
+    series_panel: pd.DataFrame, *, origins: tuple[int, ...] = HISTORICAL_ORIGINS
+) -> pd.DataFrame:
+    rows: list[dict[str, object]] = []
+    specs = {spec.series_name: spec for spec in candidate_series_catalog()}
+    for origin_year in origins:
+        for (country_iso3, series_name), group in series_panel.groupby(
+            ["country_iso3", "series_name"]
+        ):
+            spec = specs[str(series_name)]
+            for method in (
+                "threshold_baseline",
+                "rolling_slope_change",
+                "cusum_stability",
+                "segmented_regression",
+            ):
+                result = detect_break(
+                    group,
+                    country_iso3=str(country_iso3),
+                    series_name=str(series_name),
+                    directionality=spec.directionality,
+                    method=method,
+                    minimum_economic_slope_delta=spec.minimum_economic_slope_delta,
+                    as_of_year=origin_year,
+                )
+                row = result.model_dump()
+                row["origin_year"] = origin_year
+                rows.append(row)
     return pd.DataFrame(rows)
 
 
@@ -406,6 +478,64 @@ def method_agreement(breaks: pd.DataFrame) -> pd.DataFrame:
                     if len(detected) >= 3 and agreeing_years >= 3
                     else "METHOD_SENSITIVE"
                 ),
+            }
+        )
+    return pd.DataFrame(rows).sort_values(["series_name", "country_iso3"])
+
+
+def method_agreement_by_origin(origin_results: pd.DataFrame) -> pd.DataFrame:
+    rows = []
+    for origin_year, group in origin_results.groupby("origin_year"):
+        agreement = method_agreement(group)
+        if not agreement.empty:
+            agreement["origin_year"] = cast(int, origin_year)
+            rows.append(agreement)
+    if not rows:
+        return pd.DataFrame()
+    return pd.concat(rows, ignore_index=True).sort_values(
+        ["origin_year", "series_name", "country_iso3"]
+    )
+
+
+def temporal_regime_stability(origin_results: pd.DataFrame) -> pd.DataFrame:
+    segmented = origin_results[origin_results["break_method"] == "segmented_regression"].copy()
+    if segmented.empty:
+        return pd.DataFrame()
+
+    rows: list[dict[str, object]] = []
+    for (country_iso3, series_name), group in segmented.groupby(["country_iso3", "series_name"]):
+        eligible = group[group["status"] != "INSUFFICIENT_EVIDENCE"].sort_values("origin_year")
+        if eligible.empty:
+            rows.append(
+                {
+                    "country_iso3": country_iso3,
+                    "series_name": series_name,
+                    "eligible_origins": 0,
+                    "break_detection_rate": np.nan,
+                    "label_switch_count": np.nan,
+                    "modal_break_year": np.nan,
+                    "break_year_spread": np.nan,
+                    "latest_origin_label": None,
+                }
+            )
+            continue
+        detected = eligible[eligible["break_count"] > 0]
+        labels = eligible["current_regime_label"].tolist()
+        break_years = detected["strongest_break_year"].dropna().astype(int).tolist()
+        rows.append(
+            {
+                "country_iso3": country_iso3,
+                "series_name": series_name,
+                "eligible_origins": int(len(eligible)),
+                "break_detection_rate": float(len(detected) / len(eligible)),
+                "label_switch_count": int(
+                    sum(a != b for a, b in zip(labels, labels[1:], strict=False))
+                ),
+                "modal_break_year": _modal_break_year(break_years),
+                "break_year_spread": (
+                    int(max(break_years) - min(break_years)) if break_years else np.nan
+                ),
+                "latest_origin_label": labels[-1],
             }
         )
     return pd.DataFrame(rows).sort_values(["series_name", "country_iso3"])

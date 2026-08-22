@@ -774,6 +774,62 @@ def m7_phase1(
 
 
 @app.command()
+def m7_phase2() -> None:
+    """M7 phase 2: historical-origin regime recomputation and stability.
+
+    Research-only -- writes evidence under gold/research/m7/phase2/ and does
+    not alter score artifacts, publish manifests, Azure infrastructure, or the
+    scheduled production pipeline.
+    """
+    from climate_risk.research.m7_regimes import run_phase2_diagnostics
+
+    log = get_logger(stage="m7-phase2")
+    lake = prepare_lake_from_env(log)
+
+    transition_found = _latest_silver_panel(lake)
+    energy_found = _latest_silver_energy_panel(lake)
+    if transition_found is None or energy_found is None:
+        typer.echo(
+            "requires both fact_country_year_transition and fact_country_year_energy; "
+            "run `climate-risk ingest` and `climate-risk build-silver` first",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    transition_panel, transition_path = transition_found
+    energy_panel, energy_path = energy_found
+
+    artifacts = run_phase2_diagnostics(transition_panel, energy_panel)
+    origin_results = artifacts["origin_regime_results"]
+    origin_agreement = artifacts["origin_method_agreement"]
+    temporal_stability = artifacts["temporal_stability"]
+    decision_raw = artifacts["decision"]
+    assert isinstance(origin_results, pd.DataFrame)
+    assert isinstance(origin_agreement, pd.DataFrame)
+    assert isinstance(temporal_stability, pd.DataFrame)
+    assert isinstance(decision_raw, dict)
+
+    prefix = "research/m7/phase2"
+    write_parquet(lake.gold, f"{prefix}/origin_regime_results.parquet", origin_results)
+    write_parquet(lake.gold, f"{prefix}/origin_method_agreement.parquet", origin_agreement)
+    write_parquet(lake.gold, f"{prefix}/temporal_stability.parquet", temporal_stability)
+    decision = dict(decision_raw)
+    decision["inputs"] = {
+        "transition_silver_path": transition_path,
+        "energy_silver_path": energy_path,
+        "transition_rows": len(transition_panel),
+        "energy_rows": len(energy_panel),
+    }
+    write_json(lake.gold, f"{prefix}/decision.json", decision)
+
+    log.info(
+        "M7 phase 2 diagnostics complete",
+        origin_rows=len(origin_results),
+        stability_rows=len(temporal_stability),
+    )
+    typer.echo("M7 phase 2 artifacts written under gold/research/m7/phase2/")
+
+
+@app.command()
 def backtest(
     n_simulations: int = typer.Option(10_000, help="Bootstrap simulation count per split."),
     random_seed: int = typer.Option(42, help="Seed for reproducibility."),

@@ -14,7 +14,10 @@ from climate_risk.research.m7_regimes import (
     candidate_series_catalog,
     compare_methods,
     detect_break,
+    detect_breaks_by_origin,
     method_agreement,
+    run_phase2_diagnostics,
+    temporal_regime_stability,
 )
 from climate_risk.scoring.risk_score_v2_energy import (
     COMPONENT_VERSION,
@@ -296,3 +299,83 @@ def test_production_run_does_not_call_m7_research() -> None:
 
     assert "m7" not in run_source.lower()
     assert "research/m7" not in run_source
+
+
+def test_historical_origin_recomputation_ignores_future_values() -> None:
+    base = _obvious_break()
+    base["series_name"] = "carbon_intensity_gdp"
+    corrupted = base.copy()
+    corrupted.loc[corrupted["year"] > 2012, "value"] = 99999.0
+
+    clean_results = detect_breaks_by_origin(base, origins=(2012,))
+    corrupted_results = detect_breaks_by_origin(corrupted, origins=(2012,))
+
+    pd.testing.assert_frame_equal(clean_results, corrupted_results)
+
+
+def test_temporal_regime_stability_counts_label_switches() -> None:
+    origin_results = pd.DataFrame(
+        [
+            {
+                "origin_year": 2010,
+                "country_iso3": "ZZ",
+                "series_name": "x",
+                "break_method": "segmented_regression",
+                "status": "NO_CREDIBLE_BREAK",
+                "break_count": 0,
+                "strongest_break_year": None,
+                "current_regime_label": "STEADY_IMPROVEMENT",
+            },
+            {
+                "origin_year": 2012,
+                "country_iso3": "ZZ",
+                "series_name": "x",
+                "break_method": "segmented_regression",
+                "status": "BREAK_DETECTED",
+                "break_count": 1,
+                "strongest_break_year": 2011,
+                "current_regime_label": "DETERIORATING_TRANSITION",
+            },
+        ]
+    )
+
+    stability = temporal_regime_stability(origin_results).iloc[0]
+
+    assert stability["eligible_origins"] == 2
+    assert stability["break_detection_rate"] == 0.5
+    assert stability["label_switch_count"] == 1
+    assert stability["modal_break_year"] == 2011
+
+
+def test_phase2_diagnostics_are_research_only_contract() -> None:
+    transition = pd.DataFrame(
+        {
+            "country_iso3": ["ZZ"] * 18,
+            "year": list(range(2000, 2018)),
+            "carbon_intensity_gdp": [1.0 - i * 0.01 for i in range(18)],
+            "co2_mt": [100.0 - i for i in range(18)],
+            "real_gdp": [1000.0 + i * 10 for i in range(18)],
+        }
+    )
+    energy = pd.DataFrame(
+        {
+            "country_iso3": ["ZZ"] * 18,
+            "year": list(range(2000, 2018)),
+            "low_carbon_share_elec": [20.0 + i for i in range(18)],
+            "fossil_share_elec": [80.0 - i for i in range(18)],
+            "coal_share_elec": [50.0 - i * 0.5 for i in range(18)],
+        }
+    )
+
+    artifacts = run_phase2_diagnostics(transition, energy, origins=(2012, 2014))
+
+    assert set(artifacts) == {
+        "origin_regime_results",
+        "origin_method_agreement",
+        "temporal_stability",
+        "decision",
+    }
+    decision = artifacts["decision"]
+    assert isinstance(decision, dict)
+    assert decision["decision"] == "PHASE3_JUSTIFIED"
+    assert decision["decision_is_not_production_promotion"] is True
