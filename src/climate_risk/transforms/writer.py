@@ -19,3 +19,13 @@ def write_fact_country_year_transition(
         f"fact_country_year_transition/snapshot_set_id={snapshot_set_id}/data.parquet",
         panel,
     )
+
+
+def write_fact_country_year_energy(
+    frame: pd.DataFrame, *, snapshot_set_id: str, lake: LakeStorage
+) -> None:
+    write_parquet(
+        lake.silver,
+        f"fact_country_year_energy/snapshot_set_id={snapshot_set_id}/data.parquet",
+        frame,
+    )

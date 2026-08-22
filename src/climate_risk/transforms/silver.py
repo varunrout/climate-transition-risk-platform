@@ -190,6 +190,75 @@ def _quality_checks(panel: pd.DataFrame, *, countries: set[str]) -> ValidationRe
     return ValidationReport(events=events)
 
 
+ENERGY_RAW_COLUMNS = [
+    "coal_share_elec",
+    "gas_share_elec",
+    "oil_share_elec",
+    "fossil_share_elec",
+    "renewables_share_elec",
+    "low_carbon_share_elec",
+    "nuclear_share_elec",
+    "solar_share_elec",
+    "wind_share_elec",
+    "hydro_share_elec",
+    "biofuel_share_elec",
+]
+
+
+def build_fact_country_year_energy(lake: LakeStorage) -> tuple[pd.DataFrame, str, ValidationReport]:
+    """Build the raw electricity-mix silver table from the latest accepted
+    owid_energy bronze snapshot.
+
+    Deliberately separate from `build_silver_panel` / `fact_country_year_transition`
+    (M6 brief: "keep raw indicators separate from modelled/risk-score
+    components") -- this table carries only source values, no derived trend/
+    momentum/percentile math, which lives in `climate_risk.features.energy_transition`
+    and writes to its own gold artifact, never into this table or the risk score.
+    """
+    energy_path, energy_snapshot = latest_bronze_snapshot(lake.bronze, "owid_energy")
+    energy = read_parquet(lake.bronze, energy_path)
+
+    countries = load_countries()
+    in_scope = set(countries.keys())
+
+    frame = energy[energy["country_iso3"].isin(in_scope)][
+        ["country_iso3", "year", *ENERGY_RAW_COLUMNS]
+    ].copy()
+
+    snapshot_set_id = hashlib.sha256(f"owid_energy:{energy_snapshot}".encode()).hexdigest()[:16]
+    frame["snapshot_set_id"] = snapshot_set_id
+    frame = frame.sort_values(["country_iso3", "year"]).reset_index(drop=True)
+
+    report = _energy_quality_checks(frame, countries=in_scope)
+    return frame, snapshot_set_id, report
+
+
+def _energy_quality_checks(frame: pd.DataFrame, *, countries: set[str]) -> ValidationReport:
+    events: list[ValidationEvent] = []
+
+    dupes = frame.duplicated(subset=["country_iso3", "year", "snapshot_set_id"]).sum()
+    if dupes:
+        events.append(
+            ValidationEvent(
+                rule_id="DQ-PANEL-010",
+                severity=QualitySeverity.FATAL,
+                message=f"{dupes} duplicate (country_iso3, year, snapshot_set_id) row(s) in energy silver table",
+            )
+        )
+
+    non_sovereign = set(frame["country_iso3"].unique()) - countries
+    if non_sovereign:
+        events.append(
+            ValidationEvent(
+                rule_id="DQ-PANEL-011",
+                severity=QualitySeverity.FATAL,
+                message=f"Non-sovereign/aggregate rows leaked into the energy table: {sorted(non_sovereign)}",
+            )
+        )
+
+    return ValidationReport(events=events)
+
+
 def latest_complete_common_year(panel: pd.DataFrame, *, countries: set[str]) -> int | None:
     """The latest year where every in-scope country has all core features present.
 

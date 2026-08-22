@@ -20,7 +20,7 @@ there is not claimed here until it is implemented, tested, and committed.
 | M3 | Decoupling analytics, deterministic + bootstrap scenario engine | **Implemented** (library only; not yet CLI-wired) |
 | M4 | Rolling-origin backtesting harness | **Implemented** |
 | M5 | Transition risk scoring v1 (4 of 5 components), rank stability | **Implemented** |
-| M6 | Ember energy-transition features | Not implemented (source gated `pending_verification`, disabled) |
+| M6 | Energy-system transition features | **Partially implemented.** Source feasibility research done first (`docs/m6_source_feasibility.md`): OWID `energy-data` verified (licence, live access, full 1985–2024/25 coverage for all 19 countries) and ingested; Ember (direct), World Bank WDI energy indicators and IEA excluded/deferred with documented reasons. Raw electricity-mix silver table (`fact_country_year_energy`) and a diagnostic derived-features artifact (`gold/energy_transition_features.parquet`, `climate-risk energy-features`) are implemented and running against live data. **Not yet done, by design:** the risk-score gating steps (coverage/collinearity/incremental-information/backtest) — these features are not wired into `scoring/risk_score.py`, `weight_coverage` is still `0.8`, and no score version change has been made. |
 | M7 | Regime/structural-break research | Not implemented |
 | M8 | Azure runtime | **COMPLETE — production-verified.** 16 Terraform-managed resources (6 top-level Azure service resources plus their sub-resources: filesystems, role assignments, lifecycle policy, budget notifications) live in `rg-climate-risk-dev` (uksouth). Three real Container Apps Job executions have succeeded end to end against live ADLS Gen2, producing output identical to the local baseline and, since ADR 0006, a real `git_sha` in every published manifest. Weekly schedule: Monday 03:00 UTC. See `docs/finops.md`, ADR 0003–0006. |
 | M9 | Power BI semantic layer | Not implemented |
@@ -37,23 +37,27 @@ so a public image removes a real idle cost with no privacy tradeoff — see
 `docs/finops.md`). Current production tag: see "Azure infrastructure"
 below.
 
-Ember is disabled in `config/sources.yaml` (`licence_review_status:
-pending_verification`) because its exact licence, attribution wording and
-machine-readable access path have not yet been verified against
-`06_data_sources_and_licensing.md`. The config loader and quality gate refuse
-to let a non-`approved` source influence production output.
+Ember (direct) is disabled in `config/sources.yaml` (`licence_review_status:
+pending_verification`) — its licence is CC-BY-4.0, but no stable programmatic
+access path could be verified from this environment (see
+`docs/m6_source_feasibility.md`). The config loader and quality gate refuse to
+let a non-`approved` source influence production output. `owid_energy` is
+`approved` and enabled instead — same licence family, verified live access,
+verified full 1985–2024/25 coverage for all 19 countries, and it already
+re-publishes Ember's electricity-mix data.
 
 ## What actually runs today
 
 ```bash
 uv sync --all-extras
 uv run climate-risk validate-config
-uv run climate-risk ingest          # fetches real OWID + World Bank data
-uv run climate-risk build-silver    # joins into the country-year panel
+uv run climate-risk ingest          # fetches real OWID CO2 + energy-mix + World Bank data
+uv run climate-risk build-silver    # joins into the country-year panel + raw energy-mix table
+uv run climate-risk energy-features # diagnostic energy-transition features (M6, not score-wired)
 uv run climate-risk backtest        # rolling-origin evaluation, 6 origins
-uv run climate-risk score           # transition risk scoring v1
+uv run climate-risk score           # transition risk scoring v1 (unaffected by M6 so far)
 uv run climate-risk run             # chains all of the above
-uv run pytest                       # 53 tests
+uv run pytest                       # 99 tests
 uv run ruff check .
 uv run mypy src
 ```
@@ -156,9 +160,11 @@ Full cost breakdown, guardrails, and resume/shutdown commands:
 src/climate_risk/
   config/         typed config models + YAML loader (sources.yaml, countries.yaml, quality_rules.yaml)
   contracts/      pydantic domain models: manifests, validation events, run metadata
-  ingestion/      source adapters (OWID, World Bank) + orchestration pipeline
-  transforms/     silver country-year panel builder + atomic writers
-  features/       decoupling analytics (growth rates, correlation, elasticity)
+  ingestion/      source adapters (OWID CO2, OWID energy-mix, World Bank) + orchestration pipeline
+  transforms/     silver country-year panel + raw energy-mix table builders, atomic writers
+  features/       decoupling analytics (growth rates, correlation, elasticity);
+                  energy_transition.py: diagnostic M6 features (trend/momentum/velocity/
+                  percentile), not yet wired into scoring/
   scenarios/      deterministic trend baseline + seeded bootstrap Monte Carlo
   backtesting/    rolling-origin harness (no_change / deterministic / bootstrap vs actuals)
   scoring/        transition risk scoring v1 + weight-perturbation sensitivity
@@ -174,6 +180,7 @@ tests/
   integration/    full ingest/silver pipelines against local fixtures (no network required)
 docs/adr/         architectural decision records, including the backtest reproduction finding
 docs/finops.md    Azure cost design, guardrails, shutdown/recovery runbook
+docs/m6_source_feasibility.md  M6 source licence/access/coverage verification + feature contract
 infra/            Terraform (Azure) -- deployed and verified (rg-climate-risk-dev)
 Dockerfile        production container image (built and smoke-tested locally)
 ```

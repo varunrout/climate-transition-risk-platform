@@ -41,3 +41,12 @@ def world_bank_artifact() -> tuple[RawArtifact, bytes]:
         source_name="world_bank_wdi",
         content_type="application/json",
     )
+
+
+@pytest.fixture
+def owid_energy_artifact() -> tuple[RawArtifact, bytes]:
+    return make_raw_artifact(
+        FIXTURES_DIR / "owid_energy_sample.csv",
+        source_name="owid_energy",
+        content_type="text/csv",
+    )

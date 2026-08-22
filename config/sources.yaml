@@ -38,3 +38,18 @@ sources:
     adapter: ember_v1
     enabled: false
     url: "https://ember-energy.org/data/yearly-electricity-data/"
+
+  owid_energy:
+    owner: "Our World in Data"
+    tier: core
+    access: https
+    refresh_check: weekly
+    licence: "CC-BY-4.0"
+    licence_review_status: approved
+    attribution_required: true
+    adapter: owid_energy_v1
+    enabled: true
+    # Electricity-mix shares re-published from Ember's Yearly Electricity Data +
+    # Energy Institute Statistical Review of World Energy. See docs/m6_source_feasibility.md
+    # for licence/access/coverage verification.
+    url: "https://owid-public.owid.io/data/energy/owid-energy-data.csv"

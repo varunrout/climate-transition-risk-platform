@@ -71,6 +71,7 @@ def ingest(
     """Fetch, validate and snapshot configured sources into raw/ and bronze/."""
     from climate_risk.ingestion.base import SourceAdapter
     from climate_risk.ingestion.owid import OwidCo2Adapter
+    from climate_risk.ingestion.owid_energy import OwidEnergyAdapter
     from climate_risk.ingestion.pipeline import run_ingest
     from climate_risk.ingestion.world_bank import WorldBankAdapter
 
@@ -82,6 +83,7 @@ def ingest(
     adapters: dict[str, SourceAdapter] = {
         "owid_co2": OwidCo2Adapter(),
         "world_bank_wdi": WorldBankAdapter(),
+        "owid_energy": OwidEnergyAdapter(),
     }
     selected = source or [k for k, v in registry.items() if v.enabled and k in adapters]
 
@@ -121,10 +123,15 @@ def build_silver() -> None:
     """Build dim_country + fact_country_year_transition from the latest bronze snapshots."""
     from climate_risk.transforms.silver import (
         build_dim_country,
+        build_fact_country_year_energy,
         build_silver_panel,
         latest_complete_common_year,
     )
-    from climate_risk.transforms.writer import write_dim_country, write_fact_country_year_transition
+    from climate_risk.transforms.writer import (
+        write_dim_country,
+        write_fact_country_year_energy,
+        write_fact_country_year_transition,
+    )
 
     log = get_logger(stage="build-silver")
     lake = LakeStorage.from_env()
@@ -141,6 +148,31 @@ def build_silver() -> None:
 
     write_dim_country(build_dim_country(), lake=lake)
     write_fact_country_year_transition(panel, snapshot_set_id=snapshot_set_id, lake=lake)
+
+    # Raw energy-mix table (M6) is independent of the core transition panel --
+    # its absence must never block the panel that M0-M5 already depend on.
+    try:
+        energy_frame, energy_snapshot_id, energy_report = build_fact_country_year_energy(lake)
+        if energy_report.has_fatal:
+            for event in energy_report.by_severity(QualitySeverity.FATAL):
+                log.error(
+                    "energy silver table blocked, skipping",
+                    rule_id=event.rule_id,
+                    message=event.message,
+                )
+        else:
+            for event in energy_report.events:
+                log.warning("energy quality event", rule_id=event.rule_id, message=event.message)
+            write_fact_country_year_energy(
+                energy_frame, snapshot_set_id=energy_snapshot_id, lake=lake
+            )
+            log.info(
+                "energy silver table built",
+                row_count=len(energy_frame),
+                snapshot_set_id=energy_snapshot_id,
+            )
+    except FileNotFoundError:
+        log.warning("no owid_energy bronze snapshot found, skipping energy silver table")
 
     countries = set(load_countries().keys())
     eligible_year = latest_complete_common_year(panel, countries=countries)
@@ -175,6 +207,59 @@ def _latest_silver_panel(lake: LakeStorage) -> tuple[pd.DataFrame, str] | None:
     latest_path = max(fact_dirs, key=lake.silver.modified_at)
     panel = read_parquet(lake.silver, latest_path)
     return panel, latest_path
+
+
+def _latest_silver_energy_panel(lake: LakeStorage) -> tuple[pd.DataFrame, str] | None:
+    fact_dirs = lake.silver.glob("fact_country_year_energy/snapshot_set_id=*/data.parquet")
+    if not fact_dirs:
+        return None
+    latest_path = max(fact_dirs, key=lake.silver.modified_at)
+    panel = read_parquet(lake.silver, latest_path)
+    return panel, latest_path
+
+
+@app.command()
+def energy_features(
+    trailing_window_years: int = typer.Option(
+        5, help="Trailing window (years) for trend/momentum/build-out-rate features."
+    ),
+) -> None:
+    """Compute diagnostic energy-transition features (M6) and write
+    gold/energy_transition_features.parquet.
+
+    Reads the raw fact_country_year_energy silver table only -- this
+    artifact is explicitly NOT consumed by `score` yet (see
+    docs/m6_source_feasibility.md's risk-score gating section).
+    """
+    from climate_risk.features.energy_transition import compute_energy_features_for_panel
+
+    log = get_logger(stage="energy-features")
+    lake = LakeStorage.from_env()
+
+    found = _latest_silver_energy_panel(lake)
+    if found is None:
+        typer.echo(
+            "no fact_country_year_energy silver table found; run `climate-risk ingest` "
+            "and `climate-risk build-silver` first",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    energy_panel, _ = found
+
+    features = compute_energy_features_for_panel(
+        energy_panel, trailing_window_years=trailing_window_years
+    )
+    if features.empty:
+        typer.echo("no country had enough energy history for features", err=True)
+        raise typer.Exit(code=1)
+
+    write_parquet(lake.gold, "energy_transition_features.parquet", features)
+    log.info(
+        "energy features computed",
+        countries=len(features),
+        trailing_window_years=trailing_window_years,
+    )
+    typer.echo(features.to_string(index=False))
 
 
 @app.command()
@@ -421,6 +506,14 @@ def run() -> None:
     """Run every implemented stage in order: ingest, build-silver, backtest, score, publish."""
     ingest(source=None)
     build_silver()
+    try:
+        energy_features(trailing_window_years=5)
+    except typer.Exit:
+        # Diagnostic/exploratory artifact (M6) -- not required for publish, which
+        # never reads gold/energy_transition_features.parquet or gates on it.
+        get_logger(stage="run").warning(
+            "energy-features skipped (no energy silver table or insufficient history)"
+        )
     backtest(n_simulations=10_000, random_seed=42)
     score(target_year=2050, random_seed=42)
     publish()
