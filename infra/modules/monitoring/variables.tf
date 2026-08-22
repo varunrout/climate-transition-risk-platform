@@ -17,7 +17,7 @@ variable "retention_in_days" {
 
 variable "daily_quota_gb" {
   type        = number
-  default     = 0.5
+  default     = 0.1
   description = "Hard daily ingestion cap in GB -- a runaway/looping job stops sending logs rather than running up an open-ended bill."
 }
 

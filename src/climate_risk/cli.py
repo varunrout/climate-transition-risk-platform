@@ -9,6 +9,7 @@ wired as standalone CLI commands. `run` chains every implemented stage.
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -372,7 +373,11 @@ def publish(
         "started_at": run.started_at.isoformat(),
         "completed_at": run.completed_at.isoformat() if run.completed_at else None,
         "git_sha": run.git_commit,
-        "container_image_digest": None,  # populated once this runs inside a built image
+        # Image provenance: set by the Container Apps Job template
+        # (CLIMATE_RISK_IMAGE_REF/CLIMATE_RISK_IMAGE_DIGEST env vars, see
+        # infra/modules/container_apps). None outside a deployed container.
+        "container_image_ref": os.environ.get("CLIMATE_RISK_IMAGE_REF"),
+        "container_image_digest": os.environ.get("CLIMATE_RISK_IMAGE_DIGEST") or None,
         "source_snapshot_ids": {k: v["sha256"][:16] for k, v in source_snapshots.items()},
         "source_checksums": {k: v["sha256"] for k, v in source_snapshots.items()},
         "config_hash": run.config_hash,
@@ -385,7 +390,9 @@ def publish(
         "publish_status": "PUBLISHED",
         "latest_model_eligible_year": eligible_year,
         "latest_model_eligible_year_completeness": completeness,
-        "azure_job_execution_id": None,  # populated when run as an Azure Container Apps Job
+        # Set by Azure Container Apps Jobs itself via the CONTAINER_APP_JOB_EXECUTION_NAME
+        # env var it injects into every job execution -- None when run locally/in CI.
+        "azure_job_execution_id": os.environ.get("CONTAINER_APP_JOB_EXECUTION_NAME"),
     }
     (paths.gold / "manifests").mkdir(parents=True, exist_ok=True)
     (paths.gold / "manifests" / f"{run.run_id}.json").write_text(

@@ -22,7 +22,7 @@ there is not claimed here until it is implemented, tested, and committed.
 | M5 | Transition risk scoring v1 (4 of 5 components), rank stability | **Implemented** |
 | M6 | Ember energy-transition features | Not implemented (source gated `pending_verification`, disabled) |
 | M7 | Regime/structural-break research | Not implemented |
-| M8 | Azure infrastructure (Terraform) | **Terraform written, `fmt`/`validate` pass; `plan`/`apply` blocked** — the Azure subscription is disabled for all write operations (billing issue, not a permissions gap). No Azure resource exists. See `docs/finops.md`. |
+| M8 | Azure infrastructure (Terraform) | **`fmt`/`validate`/`plan` pass — 16 resources, 0 changes, 0 destroys, <£1/month estimated. Not yet applied** (awaiting go-ahead — real billable resources). See `docs/finops.md`. |
 | M9 | Power BI semantic layer | Not implemented |
 | M10 | Read-only FastAPI serving layer | Not implemented |
 | M11 | End-to-end `publish` wiring | **Implemented** — fail-closed, verified on the real CLI path (see `docs/adr/`) |
@@ -31,7 +31,10 @@ Production container: **implemented and verified**. `docker build .` produces
 a non-root, multi-stage image; the full `ingest → build-silver → backtest →
 score → publish` chain has been run inside it against a mounted volume and
 live network data, producing output bit-identical to the non-containerized
-run. Not yet pushed to any registry (ACR doesn't exist — see M8).
+run. Not yet pushed to a registry — the design uses a **public GitHub
+Container Registry** image (no Azure Container Registry at all: the image
+has no secrets/proprietary content, so a public image removes a real idle
+cost with no privacy tradeoff — see `docs/finops.md`).
 
 Ember is disabled in `config/sources.yaml` (`licence_review_status:
 pending_verification`) because its exact licence, attribution wording and
@@ -117,16 +120,22 @@ scores). Not yet pushed to any registry — see `infra/` below.
 ## Azure infrastructure
 
 `infra/` (Terraform) defines a deliberately minimal, low-cost dev
-environment: one resource group, ADLS Gen2 (Standard_LRS), ACR (Basic),
-one Container Apps Environment + one unified Container Apps Job
-(Consumption, scale-to-zero), Log Analytics only, two least-privilege
-managed identities, and a Cost Management budget with 50/80/100% alerts.
-`terraform fmt`/`validate` pass. **`terraform plan`/`apply` are currently
-blocked**: the Azure subscription returns `ReadOnlyDisabledSubscription` on
-every write attempt (confirmed independently via `az provider register`) —
-a billing/reactivation issue, not a permissions gap. No Azure resource for
-this project exists. Full cost breakdown, guardrails, and the resume path
-once the subscription is reactivated: [docs/finops.md](docs/finops.md).
+environment: one resource group, ADLS Gen2 (Standard_LRS), one Container
+Apps Environment + one unified Container Apps Job (Consumption,
+scale-to-zero) pulling a **public GitHub Container Registry image** (no
+Azure Container Registry — the image has no secrets/proprietary content,
+so a public image is free and removes a real idle cost with no privacy
+tradeoff), Log Analytics only (0.1GB/day cap, 30-day retention), two
+least-privilege managed identities, and a Cost Management budget with
+50/80/100% alerts.
+
+`terraform fmt`/`validate`/`plan` all pass against the live subscription
+(reactivated 2026-08-22): **16 resources to add, 0 to change, 0 to
+destroy**, confirmed against an empty subscription. Estimated steady-state
+cost: well under £1/month. **Not yet applied** — awaiting explicit
+go-ahead, per this repo's operating rules on hard-to-reverse/billable
+actions. Full cost breakdown, guardrails, and resume/shutdown commands:
+[docs/finops.md](docs/finops.md).
 
 ## Repository layout
 

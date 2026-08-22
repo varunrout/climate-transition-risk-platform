@@ -14,6 +14,17 @@
 # retry rather than resuming mid-pipeline; acceptable given each full run
 # costs well under a penny in Container Apps consumption pricing.
 #
+# Image: a PUBLIC GitHub Container Registry (ghcr.io) image, pulled with
+# NO registry credentials and NO Azure Container Registry -- the pipeline
+# image contains no secrets, no credentials, no proprietary data, and no
+# private assets (it's the pipeline code + public config + third-party
+# libraries; all real data is fetched at runtime from public OWID/World
+# Bank endpoints and written to this project's own storage). Publishing it
+# publicly costs nothing on either the GitHub or the Azure side and removes
+# the ~£4.20/month ACR Basic fixed charge entirely -- see docs/finops.md.
+# If a future milestone ever adds a genuine secret or proprietary asset to
+# the image, this must be revisited (private GHCR + a pull secret, or ACR).
+#
 # trigger_type defaults to "Manual" (var.trigger_type) so the very first
 # real execution is a deliberate, observed `az containerapp job start`, per
 # the "manual smoke test before scheduling" sequencing this project follows.
@@ -42,10 +53,10 @@ resource "azurerm_container_app_job" "pipeline" {
     identity_ids = [var.job_identity_id]
   }
 
-  registry {
-    server   = var.acr_login_server
-    identity = var.job_identity_id
-  }
+  # No `registry` block: var.image_ref is a public ghcr.io image, so no pull
+  # credentials of any kind are needed (not even the job's own managed
+  # identity) -- one fewer moving part and one fewer thing that can hold a
+  # stale/broken credential.
 
   dynamic "manual_trigger_config" {
     for_each = var.trigger_type == "Manual" ? [1] : []
@@ -71,7 +82,7 @@ resource "azurerm_container_app_job" "pipeline" {
   template {
     container {
       name   = "climate-risk-pipeline"
-      image  = "${var.acr_login_server}/climate-risk-pipeline:${var.image_tag}"
+      image  = var.image_ref # full ghcr.io/<owner>/<image>:<git-sha> reference, never ":latest"
       cpu    = 0.5
       memory = "1Gi"
       # No args override -> runs the image's default ENTRYPOINT/CMD, i.e.
@@ -83,8 +94,7 @@ resource "azurerm_container_app_job" "pipeline" {
       # pipeline's RunPaths only reads/writes local filesystem paths today.
       # It does not yet know how to read/write an abfss:// URL -- that needs
       # an fsspec-backed adapter (adlfs package) that has not been added or
-      # tested, because there is no enabled subscription to test it against
-      # yet. Until that lands, this job would need an ephemeral local
+      # tested. Until that lands, this job would need an ephemeral local
       # scratch path plus an explicit az storage/azcopy sync step, or the
       # abfss support must be implemented and verified first. This variable
       # exists so the Terraform shape is correct when that work lands, not
@@ -96,6 +106,25 @@ resource "azurerm_container_app_job" "pipeline" {
       env {
         name  = "CLIMATE_RISK_CONFIG_DIR"
         value = "/app/config"
+      }
+      # Image provenance for the publish manifest (climate_risk.cli.publish
+      # reads these and records them in gold/manifests/<run_id>.json as
+      # container_image_ref / container_image_digest, rather than leaving
+      # those fields permanently null).
+      env {
+        name  = "CLIMATE_RISK_IMAGE_REF"
+        value = var.image_ref
+      }
+      env {
+        name  = "CLIMATE_RISK_IMAGE_DIGEST"
+        value = var.image_digest
+      }
+      # production INFO logging only -- no DEBUG telemetry, no raw
+      # DataFrame payloads (climate_risk.observability.logging never logs
+      # more than row counts / scalar metrics; see docs/finops.md).
+      env {
+        name  = "CLIMATE_RISK_LOG_LEVEL"
+        value = "INFO"
       }
     }
   }

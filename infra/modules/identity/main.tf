@@ -2,9 +2,10 @@
 #
 # 1. id-climate-risk-job: the RUNTIME identity Container Apps Jobs run as.
 #    Storage Blob Data Contributor on the lake storage account (read/write
-#    its own raw/bronze/silver/gold containers) + AcrPull on the registry
-#    (pull its own image). Nothing else -- no Key Vault access, since v1
-#    has no secrets to read (see docs/finops.md section on Key Vault).
+#    its own raw/bronze/silver/gold containers). Nothing else -- no ACR
+#    role (the pipeline image is a public GHCR image, pulled with no
+#    credentials at all -- see infra/modules/container_apps), no Key Vault
+#    access, since v1 has no secrets to read (docs/finops.md).
 #
 # 2. id-climate-risk-deploy: the DEPLOY identity GitHub Actions assumes via
 #    OIDC federated credential (no client secret stored anywhere). Granted
@@ -26,12 +27,6 @@ resource "azurerm_role_assignment" "job_storage_blob_data_contributor" {
   principal_id         = azurerm_user_assigned_identity.job.principal_id
 }
 
-resource "azurerm_role_assignment" "job_acr_pull" {
-  scope                = var.registry_id
-  role_definition_name = "AcrPull"
-  principal_id         = azurerm_user_assigned_identity.job.principal_id
-}
-
 resource "azurerm_user_assigned_identity" "deploy" {
   name                = "id-climate-risk-deploy"
   resource_group_name = var.resource_group_name
@@ -46,8 +41,8 @@ resource "azurerm_role_assignment" "deploy_contributor_scoped_to_rg" {
 }
 
 # Contributor alone cannot create/manage role assignments (this Terraform
-# config assigns Storage Blob Data Contributor + AcrPull to the job identity
-# above), so the deploy identity also needs RBAC-administration -- scoped to
+# config assigns Storage Blob Data Contributor to the job identity above),
+# so the deploy identity also needs RBAC-administration -- scoped to
 # this resource group only via the built-in "Role Based Access Control
 # Administrator" role, which can manage role assignments but (unlike Owner)
 # cannot itself manage other resource types. This is the narrowest built-in

@@ -6,8 +6,8 @@ output "storage_account_name" {
   value = module.storage.storage_account_name
 }
 
-output "acr_login_server" {
-  value = module.registry.login_server
+output "image_ref" {
+  value = local.image_ref
 }
 
 output "container_app_job_id" {

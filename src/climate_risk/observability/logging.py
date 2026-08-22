@@ -7,18 +7,35 @@ country (when applicable), duration_s, row_count, quality_status.
 from __future__ import annotations
 
 import logging
+import os
 import sys
 from typing import Any
 
 import structlog
 
 
-def configure_logging(*, level: int = logging.INFO, json_output: bool = True) -> None:
+def _default_level() -> int:
+    """INFO unless CLIMATE_RISK_LOG_LEVEL says otherwise.
+
+    Production (Container Apps Job) sets CLIMATE_RISK_LOG_LEVEL=INFO
+    explicitly (see infra/modules/container_apps) so this is never left to
+    an implicit default in the deployed environment; local runs get the
+    same INFO default without needing to set anything. No DEBUG-level
+    telemetry is ever enabled by default -- opt in explicitly for local
+    debugging only.
+    """
+    name = os.environ.get("CLIMATE_RISK_LOG_LEVEL", "INFO").upper()
+    return logging.getLevelNamesMapping().get(name, logging.INFO)
+
+
+def configure_logging(*, level: int | None = None, json_output: bool = True) -> None:
     """Configure structlog + stdlib logging for the whole process.
 
     Call once at process entry (CLI command, job entrypoint). Safe to call
-    multiple times; later calls simply reconfigure.
+    multiple times; later calls simply reconfigure. `level` defaults to
+    `_default_level()` (CLIMATE_RISK_LOG_LEVEL env var, else INFO).
     """
+    level = level if level is not None else _default_level()
     shared_processors: list[Any] = [
         structlog.contextvars.merge_contextvars,
         structlog.processors.TimeStamper(fmt="iso", utc=True),

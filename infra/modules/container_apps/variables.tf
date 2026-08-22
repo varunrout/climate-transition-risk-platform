@@ -22,13 +22,15 @@ variable "job_identity_id" {
   type = string
 }
 
-variable "acr_login_server" {
-  type = string
+variable "image_ref" {
+  type        = string
+  description = "Full public GHCR image reference, e.g. ghcr.io/<owner>/climate-transition-risk:<git-sha>. Immutable git-SHA tag, never 'latest'. Public image -> no registry credentials needed to pull it."
 }
 
-variable "image_tag" {
+variable "image_digest" {
   type        = string
-  description = "Immutable git-SHA tag, e.g. output of `git rev-parse --short HEAD`. Never 'latest'."
+  description = "sha256 digest of the pushed image, for provenance in the publish manifest. Empty string if not yet known (e.g. before the first push)."
+  default     = ""
 }
 
 variable "trigger_type" {

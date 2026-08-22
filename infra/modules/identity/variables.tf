@@ -14,10 +14,6 @@ variable "storage_account_id" {
   type = string
 }
 
-variable "registry_id" {
-  type = string
-}
-
 variable "github_repo" {
   type        = string
   description = "GitHub repo as 'owner/name' for OIDC federation. Empty string skips creating the federated credential (e.g. before the repo is pushed to GitHub)."

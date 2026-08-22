@@ -6,6 +6,7 @@ locals {
     owner       = var.owner
   }
   name_prefix = "${var.project_slug}-${var.environment}"
+  image_ref   = "ghcr.io/${var.ghcr_owner}/${var.ghcr_image_name}:${var.image_tag}"
 }
 
 # Single resource group -- no separate dev/staging/prod/shared/networking/
@@ -31,15 +32,6 @@ module "storage" {
   tags                 = local.tags
 }
 
-module "registry" {
-  source = "../../modules/registry"
-
-  registry_name       = "acr${replace(var.project_slug, "-", "")}${var.environment}01"
-  resource_group_name = azurerm_resource_group.main.name
-  location            = azurerm_resource_group.main.location
-  tags                = local.tags
-}
-
 module "monitoring" {
   source = "../../modules/monitoring"
 
@@ -58,7 +50,6 @@ module "identity" {
   resource_group_id   = azurerm_resource_group.main.id
   location            = azurerm_resource_group.main.location
   storage_account_id  = module.storage.storage_account_id
-  registry_id         = module.registry.registry_id
   github_repo         = var.github_repo
   tags                = local.tags
 }
@@ -72,8 +63,8 @@ module "container_apps" {
   location                   = azurerm_resource_group.main.location
   log_analytics_workspace_id = module.monitoring.workspace_id
   job_identity_id            = module.identity.job_identity_id
-  acr_login_server           = module.registry.login_server
-  image_tag                  = var.image_tag
+  image_ref                  = local.image_ref
+  image_digest               = var.image_digest
   trigger_type               = var.job_trigger_type
   lake_root_url              = "abfss://raw@${module.storage.storage_account_name}.dfs.core.windows.net/.." # see container_apps module KNOWN GAP comment
   tags                       = local.tags
