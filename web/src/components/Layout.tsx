@@ -68,7 +68,7 @@ export function Layout() {
         <p>
           Not real-time analytics. Reflects the latest successful published run
           {runMetadata?.run_id ? ` (${runMetadata.run_id.slice(0, 8)})` : ''}. Git SHA{' '}
-          {runMetadata?.git_sha ? runMetadata.git_sha.slice(0, 12) : 'unknown'}.
+          {runMetadata?.git_sha ? runMetadata.git_sha.slice(0, 12) : 'unknown'}. v1.0.0.
         </p>
       </footer>
     </div>

@@ -1,0 +1,44 @@
+{
+  "analysis_date": "2026-08-23",
+  "production_run_compared_against": "19923940-f6bf-43a1-a3c6-298d4af1769b",
+  "production_run_completed_at": "2026-08-23T16:12:35Z",
+  "fresh_fetch_performed_at": "2026-08-23T17:05:57Z",
+  "elapsed_between_runs_minutes": 53,
+  "method": "Each source's raw fetch is content-hashed (SHA-256 of the raw response bytes, first 16 hex chars stored as source_snapshot_id). A fresh fetch from all three live sources was performed and its snapshot_ids compared against the production run's, byte-for-byte.",
+  "sources_compared": [
+    {
+      "source": "owid_co2",
+      "production_snapshot_id": "7f78e2b218ce4bb8",
+      "fresh_snapshot_id": "7f78e2b218ce4bb8",
+      "identical": true,
+      "production_row_count": 3744,
+      "fresh_row_count": 3744
+    },
+    {
+      "source": "world_bank_wdi",
+      "production_snapshot_id": "21cb9294d95abbb2",
+      "fresh_snapshot_id": "21cb9294d95abbb2",
+      "identical": true,
+      "production_row_count": 494,
+      "fresh_row_count": 494
+    },
+    {
+      "source": "owid_energy",
+      "production_snapshot_id": "77b3db513f02f5ff",
+      "fresh_snapshot_id": "77b3db513f02f5ff",
+      "identical": true,
+      "production_row_count": 2307,
+      "fresh_row_count": 2307
+    }
+  ],
+  "revision_detected": false,
+  "row_count_changes": "none",
+  "changed_country_years": "none",
+  "revised_historical_values": "none",
+  "newly_available_years": "none",
+  "removed_observations": "none",
+  "schema_differences": "none",
+  "conclusion": "No upstream revision detected in this window; all three sources returned byte-identical content. This is an honest result of a short (53-minute) window between fetches, not a claim that these sources never revise -- see docs/reproducibility.md for the mechanism that would catch a real revision, and docs/data_cards/data-card.md for each source's revision characteristics.",
+  "revision_impact_analysis": "not applicable -- no revision was detected to analyze the impact of",
+  "release_materiality_threshold_defined": "mean absolute score delta > 2.0 points, OR max score delta > 5.0 points, OR Spearman rank correlation < 0.98, OR any country's rank moves by more than 2 positions -- defined before this analysis ran, per this project's governance policy (docs/governance.md)"
+}

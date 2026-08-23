@@ -1,0 +1,35 @@
+{
+  "test_date": "2026-08-23",
+  "frozen_input_reproducibility": {
+    "run_a": {
+      "environment": "Azure Container Apps Job (Linux, production image)",
+      "source_run_id": "19923940-f6bf-43a1-a3c6-298d4af1769b",
+      "release_id": "adfc6a067fe0cb04"
+    },
+    "run_b": {
+      "environment": "local Windows checkout, isolated temp lake",
+      "source_run_id": "320c5fa3-823a-4fd4-a426-ad4283a13f60",
+      "release_id": "adfc6a067fe0cb04"
+    },
+    "source_snapshot_ids_identical": true,
+    "config_hash_identical": true,
+    "release_id_identical": true,
+    "country_overview_analytical_fields_identical": true,
+    "country_overview_field_diffs": 38,
+    "country_overview_field_diffs_all_expected_run_metadata": true,
+    "country_overview_field_diffs_note": "All 38 diffs are exclusively latest_successful_run_id / latest_successful_run_completed_at (2 fields x 19 countries) -- zero diffs in any score, rank, confidence, or component field.",
+    "other_files_sha256_identical": ["countries.json", "country-timeseries.json", "energy-indicators.json", "regime-diagnostics.json", "risk-components.json", "scenario-quantiles.json"],
+    "verdict": "exact content-level reproducibility, given identical inputs and code; run-specific metadata (run_id, timestamps) intentionally differs and is not claimed to be reproducible"
+  },
+  "cross_environment_reproducibility": {
+    "comparison": "Windows local execution vs Linux (Azure) production execution",
+    "backtest_metrics_rows_total": 345,
+    "backtest_metrics_rows_differing": 4,
+    "backtest_metrics_max_relative_difference": 5.207969785136773e-14,
+    "differing_fields": ["forecast_p95", "interval_width_90", "absolute_error", "forecast_p50"],
+    "root_cause": "floating-point non-associativity in the empirical_bootstrap Monte Carlo's summation order across different BLAS/numpy builds -- not a data or code difference",
+    "affects_rounded_public_output": false,
+    "verdict": "cross-environment parity confirmed at the precision that reaches any human-readable output; residual noise is at the ~15th significant digit and does not change any displayed score, rank, or confidence value"
+  },
+  "data_revision_analysis": "see data-revision-summary.json -- no revision detected in the tested window"
+}

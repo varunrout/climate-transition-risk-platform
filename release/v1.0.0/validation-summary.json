@@ -1,0 +1,33 @@
+{
+  "validated_at": "2026-08-23",
+  "python": {
+    "ruff_check": "pass",
+    "ruff_format_check": "pass",
+    "mypy": "pass (68 source files, no issues)",
+    "pytest": "pass (287 passed, 1 warning)"
+  },
+  "frontend": {
+    "lint": "pass",
+    "typecheck": "pass",
+    "test": "pass (31 passed, 5 test files)",
+    "build": "pass"
+  },
+  "terraform": {
+    "fmt_check": "pass",
+    "validate": "pass",
+    "plan_drift": "none -- 0 add, 0 change, 0 destroy against current production variables"
+  },
+  "security": {
+    "secret_scan_working_tree": "pass -- no matches for common secret patterns",
+    "secret_scan_git_history": "pass -- no matches for common secret patterns across full git log",
+    "github_secret_scanning_alerts": 0,
+    "dependabot_vulnerability_alerts_enabled": true,
+    "dependabot_alerts_at_validation_time": 0,
+    "npm_audit_production": "0 vulnerabilities"
+  },
+  "license_audit": {
+    "frontend_third_party_licenses": "all permissive (MIT/ISC/Apache-2.0/BSD/MPL-2.0/MIT-0/BlueOak-1.0.0/CC0-1.0/0BSD), zero copyleft",
+    "software_license": "MIT (repository LICENSE file, added at v1.0.0)",
+    "data_licenses": "CC-BY-4.0 for all three enabled sources, documented in docs/data_cards/data-card.md"
+  }
+}

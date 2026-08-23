@@ -1,0 +1,32 @@
+{
+  "release_version": "1.0.0",
+  "release_git_sha": "PENDING_FILLED_BY_FINAL_RELEASE_COMMIT",
+  "runtime_pipeline_source_sha": "f0bf7f5be79e248591a47d38cb949f17b68f178b",
+  "runtime_api_source_sha": "f0bf7f5be79e248591a47d38cb949f17b68f178b",
+  "runtime_source_note": "v1.0.0's code/doc changes are non-runtime (LICENSE, docs, version metadata fields not read at runtime -- API_VERSION was already hardcoded to 1.0.0 independent of pyproject.toml). No container rebuild was required or performed for this release; the runtime images in production are unchanged from M10 and are documented here as a legitimate, explicitly-noted distinction from release_git_sha, per this project's own release-tagging governance rule.",
+  "pipeline_image": "ghcr.io/varunrout/climate-risk-pipeline:f0bf7f5be79e248591a47d38cb949f17b68f178b",
+  "pipeline_image_digest": "sha256:3b20853de6e85ca5cc67ae698576a3a3a55da4ac762103d8d6be2eac794ccbf9",
+  "api_image": "ghcr.io/varunrout/climate-risk-api:f0bf7f5be79e248591a47d38cb949f17b68f178b",
+  "api_image_digest": "sha256:46123ace84ab8661c270873b5746a48872c2336b60ee2e62ddf2e1de1c9e7249",
+  "production_run_id": "19923940-f6bf-43a1-a3c6-298d4af1769b",
+  "web_bundle_hash": "ca41aa060472346e3b44471752410e0393684314d2293b24ce86bb34fd43ff36",
+  "config_hash": "ac4bfcb823d938d3",
+  "source_snapshot_ids": {
+    "owid_co2": "7f78e2b218ce4bb8",
+    "world_bank_wdi": "21cb9294d95abbb2",
+    "owid_energy": "77b3db513f02f5ff"
+  },
+  "active_score_version": "v2_energy",
+  "active_component_version": "energy_component_v2.1",
+  "active_scenario_method": "empirical_bootstrap_v1",
+  "comparison_score_version": "v1",
+  "country_count": 19,
+  "python_test_count": 287,
+  "frontend_test_count": 31,
+  "deployment_urls": {
+    "dashboard": "https://varunrout.github.io/climate-transition-risk-platform/",
+    "api": "https://ca-climate-risk-dev-api.ambitiousbush-97a2aedf.uksouth.azurecontainerapps.io",
+    "api_docs": "https://ca-climate-risk-dev-api.ambitiousbush-97a2aedf.uksouth.azurecontainerapps.io/docs",
+    "api_openapi": "https://ca-climate-risk-dev-api.ambitiousbush-97a2aedf.uksouth.azurecontainerapps.io/openapi.json"
+  }
+}

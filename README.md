@@ -1,14 +1,39 @@
 # Climate Transition Risk Intelligence Platform
 
-Country-level analytics platform for historical decarbonisation, GDP/CO2
-decoupling, forward transition uncertainty and an explainable transition-risk
-score, built on public data (Our World in Data, World Bank) with an
-Azure-native target architecture.
+**v1.0.0** · A sovereign climate transition-risk intelligence platform:
+converts public emissions, economic, and energy data for 19 G20 economies
+into evidence-backed country risk profiles, rankings, and forward
+scenarios — reproducible end to end, from ingestion to a live dashboard
+and API.
+
+**Live product**: [dashboard](https://varunrout.github.io/climate-transition-risk-platform/) · **Live API**: [Swagger/OpenAPI docs](https://ca-climate-risk-dev-api.ambitiousbush-97a2aedf.uksouth.azurecontainerapps.io/docs)
+
+**Key engineering**: Azure (Container Apps, ADLS Gen2), Terraform,
+managed identity (zero keys/SAS/connection strings), GitHub Actions
+(CI + immutable-tag container builds + Pages deployment), FastAPI, React/
+TypeScript, deterministic checksummed publication (`gold/web`).
+
+**Key analytical evidence**: production risk score `v2_energy` combines
+five components (including an energy-transition signal that only reached
+production after clearing a pre-registered evidence gate — see
+`docs/governance.md`); forward scenarios (`empirical_bootstrap_v1`)
+validated by rolling-origin backtesting against two baseline models; a
+research track (M7) evaluated two further candidates and explicitly did
+**not** promote either — a negative result reported, not hidden.
+
+This README works for three audiences: a **recruiter/hiring manager**
+gets the summary above and `docs/portfolio-case-study.md`; a **data
+scientist/analyst** should read `docs/model_cards/model-card.md` and
+`docs/data_cards/data-card.md`; an **engineer reproducing this** should
+jump straight to `docs/reproducibility.md`. Deeper technical detail below
+links out to `docs/` rather than duplicating it here.
 
 **This README states only what has actually been implemented and verified in
 this repository.** The full design spec (25 documents) lives in the project's
 Google Drive folder and describes the target end state; a capability listed
 there is not claimed here until it is implemented, tested, and committed.
+`docs/scope-v1.md` freezes exactly what v1.0.0 covers and what it
+deliberately excludes.
 
 ## Implementation status
 
@@ -25,7 +50,7 @@ there is not claimed here until it is implemented, tested, and committed.
 | M8 | Azure runtime | **COMPLETE - production-verified.** Terraform-managed resources live in `rg-climate-risk-dev` (uksouth): ADLS Gen2, four filesystems, Container Apps Environment + Job, two managed identities, RBAC, Log Analytics, lifecycle policy, and budget. Real Container Apps Job executions have succeeded end to end against live ADLS Gen2, including the M6 v2 production run `job-climate-risk-dev-pipeline-xsjvjwd`, with output identical to the local baseline and real Git/image provenance in the manifest. Weekly schedule: Monday 03:00 UTC. See `docs/finops.md`, ADR 0003-0010. |
 | M9 | React web dashboard (canonical product) + superseded Power BI prototype | **COMPLETE — deployed, live, and verified with real portfolio screenshots.** ADR 0016: the canonical M9 product changed from a native Power BI report to a React/TypeScript web dashboard (`web/`) — a distribution/portability decision, not a claim Power BI is technically impossible. The Power BI work (`powerbi/`, `docs/powerbi/`) is preserved as engineering history and marked superseded, not deleted; it includes a real, live-debugged record of 9 Desktop bugs found and fixed, with one unresolved report-canvas defect that ended that route (`docs/powerbi/native_report_status.md`). A deterministic `gold/web/` JSON publication layer (`climate-risk build-web`, ADR 0017) sits downstream of `gold/bi/` with a versioned manifest (schema version, provenance, per-file row counts/SHA-256, bundle hash). The React app (Vite + TypeScript + React Router + TanStack Query + Zod-validated contracts + ECharts) implements all 7 canonical routes against real data, with production (`v2_energy`/`empirical_bootstrap_v1`) vs comparison (`v1`) vs research-only (M7 diagnostics) semantics enforced throughout. Live in-browser verification against the real 19-country bundle caught and fixed a real bug (`echarts-for-react` never called `setOption` under echarts v6; replaced with a direct ECharts binding, `web/src/lib/useEcharts.ts`). **Deployed to GitHub Pages** (zero cost, `.github/workflows/deploy-web.yml`): **https://varunrout.github.io/climate-transition-risk-platform/**. 8 real Playwright screenshots (7 routes + one mobile capture) taken directly against that live deployment, chart-paint-aware (not faked, not loading states) — see `docs/web/screenshots/`. **Executive Overview map regression fixed**: the ECharts `map` series (plain equirectangular projection, no antimeridian-aware clipping) drew a long horizontal streak connecting Russia's antimeridian-split geometry, plus a wide band across the bottom from Antarctica's full-longitude-span geometry at extreme southern latitude. Replaced with a static `d3-geo`/`geoPath` SVG renderer (sphere-aware clipping fixes the Russia streak) that also drops Antarctica from the rendered collection (zero analytical relevance for a G20 map) and removes `roam: true` (no more accidental free zoom/pan) in favour of keyboard-focusable/activatable country paths. See ADR 0016, ADR 0017. |
 | M10 | Read-only FastAPI serving layer | **COMPLETE — deployed, healthy, and verified live.** Serves published `gold/web` output (never recomputes analytics), fails to start on an inconsistent bundle, versioned `/api/v1` contracts (Pydantic v2, no bare dicts), production/research semantics enforced in the response models. Root cause of the original CrashLoopBackOff: `gold/bi`/`gold/web` had only ever been published locally — the scheduled Container Apps Job's `run` chain never included the product-publication stage. Fixed with a persistent `climate-risk publish-product` stage invoked by `run()` right after core `publish()` succeeds (never a one-off `--command` override); core analytical publication stays the fail-closed barrier, product-publication failures are reported loudly but never corrupt or roll back a valid core release (ADR 0019). Container images are now built by **GitHub Actions**, not local Docker (`.github/workflows/build-containers.yml`): immutable full-Git-SHA GHCR tags, OCI revision labels, GHA build cache, machine-readable digest artifacts, anonymous-pull verified for both `climate-risk-pipeline` and `climate-risk-api`. Live API: **https://ca-climate-risk-dev-api.ambitiousbush-97a2aedf.uksouth.azurecontainerapps.io** (`/docs`, `/redoc`, `/openapi.json`), scale-to-zero (min replicas 0), `id-climate-risk-api` managed identity with **Storage Blob Data Reader only** (no keys/SAS/connection strings). `/api/v1/meta` exposes `data_git_sha` (the pipeline commit that produced the served bundle) and `api_git_sha`/`api_image_digest` (this API application's own build) as distinct fields, not one overloaded value. Local/Azure response parity verified byte-for-byte except 4/345 backtest rows differing at ~1e-13 relative floating-point precision (cross-platform BLAS/numpy noise, not a data or logic bug). Web dashboard (M9) unmodified and still fully independent. See ADR 0018, ADR 0019, `docs/api/`. |
-| M11 | v1 release (data revision analysis, reproducibility test, evidence bundle, governance/hardening) | Not implemented. The fail-closed `publish` barrier itself is implemented and production-verified (a prerequisite for M11, not M11 itself) — see `docs/adr/`. |
+| M11 | v1.0.0 release (data revision analysis, reproducibility test, evidence bundle, governance/hardening) | **COMPLETE — tagged and released.** Data revision analysis found zero drift (byte-identical snapshot hashes vs. a fresh live fetch); frozen-input reproducibility proven exact for every analytical field (only run-specific metadata legitimately differs); cross-environment (Windows/Linux) parity confirmed at ~5e-14 relative precision, not visible in any rounded output. Model/data cards, governance doc, reproducibility guide, and architecture diagrams added. Security review: zero secrets found (repo + full Git history + GitHub secret scanning), Dependabot alerts enabled. Machine-readable release evidence bundle at `release/v1.0.0/`, self-validated by `scripts/validate_release.py`. One stale documentation figure found and corrected during the model-evidence audit (a conflated backtest-reproduction claim — see the `backtest` section below). See `docs/scope-v1.md`, `docs/governance.md`, `docs/reproducibility.md`, `docs/model_cards/model-card.md`, `docs/data_cards/data-card.md`, `docs/architecture/`. |
 
 Production container: **implemented, pushed, and running in production**.
 `docker build .` produces a non-root, multi-stage image; the full
@@ -145,13 +170,25 @@ primary constant-price series; OWID GDP kept only as a secondary column).
 `backtest` runs 6 rolling origins (2010→2015 … 2017→2022) across all 19
 countries against three candidate models (no-change, deterministic trend,
 empirical bootstrap) and writes `gold/backtest_country_origin.parquet` +
-`gold/backtest_summary.parquet`. See
-[docs/adr/0002-backtest-reproduction-vs-scratch.md](docs/adr/0002-backtest-reproduction-vs-scratch.md)
-for the reproduction of the documented 2015→2022 scratch experiment: the
-bootstrap's median absolute error (0.0262) closely matches the scratch
-figure (≈0.0263); 90% interval coverage (76.3% across 114 splits) does
-**not** reproduce the scratch's ≈84.2% and is reported as a genuine,
-unresolved undercoverage finding — not tuned away.
+`gold/backtest_summary.parquet`. Two distinct evidence claims here, kept
+separate deliberately (conflating them was a documentation bug fixed at
+the v1.0.0 release — see
+[docs/adr/0002-backtest-reproduction-vs-scratch.md](docs/adr/0002-backtest-reproduction-vs-scratch.md)):
+
+- **Single-origin scratch reproduction** (2015→2022 only, 19 splits): the
+  bootstrap's median absolute error (0.0262) closely matched the original
+  scratch-study figure (≈0.0263); interval coverage (63.2%) did **not**
+  reproduce the scratch's ≈84.2%.
+- **Full production backtest** (all 6 rolling origins, 114 splits per
+  model — this is what `/api/v1/backtests` and the Model Evidence
+  dashboard page actually serve): empirical bootstrap MAE 0.0363, median
+  AE 0.0201, 90% interval coverage 76.3% (calibration gap 13.7 points
+  below the nominal 90% target) — closer to but still short of the
+  scratch's ≈84.2%. Reported as a genuine, unresolved undercoverage
+  finding, not tuned away (see `docs/model_cards/model-card.md`'s Known
+  limitations). Live figures always available at `/api/v1/backtests`;
+  read them from the running system rather than this document, which will
+  go stale.
 
 `score` computes **both** transition risk scores: v1 (4 of the 5 nominal
 components, permanent comparison baseline, weight-perturbation
