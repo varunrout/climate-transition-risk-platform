@@ -86,3 +86,9 @@ variable "api_image_ref" {
   description = "Full public GHCR image reference for the API, e.g. ghcr.io/<owner>/climate-risk-api:<git-sha>."
   default     = ""
 }
+
+variable "api_image_digest" {
+  type        = string
+  description = "Immutable digest (sha256:...) of the API image, exposed to the running API via CLIMATE_RISK_API_IMAGE_DIGEST (surfaced at /api/v1/meta as api_image_digest). Optional -- empty means the field stays null."
+  default     = ""
+}

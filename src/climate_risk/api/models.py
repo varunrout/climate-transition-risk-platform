@@ -32,8 +32,23 @@ class ApiMetadata(BaseModel):
     source_run_id: str | None = Field(
         description="Run ID of the analytical run this bundle was published from."
     )
-    source_git_sha: str | None = Field(
-        description="Git SHA of the analytical pipeline that produced this bundle."
+    data_git_sha: str | None = Field(
+        description=(
+            "Git SHA of the *pipeline* commit that produced the served analytical data "
+            "(gold/web bundle). Distinct from api_git_sha -- see that field's description."
+        )
+    )
+    api_git_sha: str | None = Field(
+        description=(
+            "Git SHA baked into *this running API application's* own container image "
+            "(CLIMATE_RISK_GIT_SHA). Distinct from data_git_sha: the API code and the "
+            "analytical data it serves are built and deployed independently, so these "
+            "two SHAs commonly differ and neither should be inferred from the other."
+        )
+    )
+    api_image_digest: str | None = Field(
+        default=None,
+        description="Immutable digest of this API's own container image, if injected at deploy time.",
     )
     source_snapshot_ids: dict[str, str | None] = Field(
         description="Content-addressed snapshot IDs of each upstream data source."

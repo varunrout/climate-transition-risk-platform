@@ -216,6 +216,15 @@ resource "azurerm_container_app" "api" {
         name  = "CLIMATE_RISK_LOG_LEVEL"
         value = "INFO"
       }
+      # Non-secret: an OCI image digest, surfaced read-only at /api/v1/meta
+      # as api_image_digest so a caller can tell exactly which built image
+      # is answering -- distinct from CLIMATE_RISK_GIT_SHA (baked in at
+      # build time) and from data_git_sha (the analytical bundle's own
+      # provenance). Empty string when unset -- the API treats "" as null.
+      env {
+        name  = "CLIMATE_RISK_API_IMAGE_DIGEST"
+        value = var.api_image_digest
+      }
 
       liveness_probe {
         transport = "HTTP"

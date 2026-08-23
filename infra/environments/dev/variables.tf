@@ -96,3 +96,9 @@ variable "api_ghcr_image_name" {
   type    = string
   default = "climate-risk-api"
 }
+
+variable "api_image_digest" {
+  type        = string
+  description = "Immutable digest (sha256:...) of the API image, exposed to the running API via CLIMATE_RISK_API_IMAGE_DIGEST for /api/v1/meta. Optional -- empty means the field stays null."
+  default     = ""
+}

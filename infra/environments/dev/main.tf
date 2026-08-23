@@ -76,6 +76,7 @@ module "container_apps" {
   api_identity_id        = module.identity.api_identity_id
   api_identity_client_id = module.identity.api_identity_client_id
   api_image_ref          = local.api_image_ref
+  api_image_digest       = var.api_image_digest
 }
 
 # Cost Management budget -- an ALERTING mechanism, not a spending cap. Azure

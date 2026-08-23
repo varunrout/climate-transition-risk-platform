@@ -396,6 +396,19 @@ def test_meta(client: TestClient) -> None:
     assert body["source_run_id"] == "run-test-1"
     assert body["country_count"] == 3
     assert body["data_schema_version"] == "1.0.0"
+    # data provenance and API application provenance are distinct concepts
+    # that must never be collapsed into one overloaded field (ADR 0018/0019).
+    assert "source_git_sha" not in body
+    assert body["data_git_sha"] == "abc123def456"  # baked into the published bundle's manifest
+    assert body["api_git_sha"]  # this test process's own resolvable git SHA (repo checkout)
+
+
+def test_meta_api_image_digest_reflects_env_when_set(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("CLIMATE_RISK_API_IMAGE_DIGEST", "sha256:deadbeefcafe")
+    body = client.get("/api/v1/meta").json()
+    assert body["api_image_digest"] == "sha256:deadbeefcafe"
 
 
 def test_openapi_and_docs_available(client: TestClient) -> None:
