@@ -179,14 +179,31 @@ resource "azurerm_container_app" "api" {
       cpu    = 0.5
       memory = "1Gi"
 
+      # All four zones set, even though the API only ever reads gold: Azure
+      # sets CONTAINER_APP_NAME for Container Apps as well as Jobs, so
+      # climate_risk.storage.runtime.validate_cloud_storage_invariant()
+      # (the guard that catches the exact silent-local-fallback failure
+      # mode recorded in ADR 0010) requires all four zones to resolve to
+      # ADLS/abfss inside ANY Container Apps environment, not just Jobs --
+      # confirmed by a real CrashLoopBackOff with only gold set. Pointing
+      # raw/bronze/silver at real (unused) Azure paths satisfies that
+      # invariant without weakening it for the production batch job.
+      env {
+        name  = "CLIMATE_RISK_RAW_ROOT"
+        value = "abfss://raw@${var.storage_account_name}.dfs.core.windows.net/"
+      }
+      env {
+        name  = "CLIMATE_RISK_BRONZE_ROOT"
+        value = "abfss://bronze@${var.storage_account_name}.dfs.core.windows.net/"
+      }
+      env {
+        name  = "CLIMATE_RISK_SILVER_ROOT"
+        value = "abfss://silver@${var.storage_account_name}.dfs.core.windows.net/"
+      }
       env {
         name  = "CLIMATE_RISK_GOLD_ROOT"
         value = "abfss://gold@${var.storage_account_name}.dfs.core.windows.net/"
       }
-      # Read-only endpoints never need raw/bronze/silver -- CLIMATE_RISK_GOLD_ROOT
-      # alone is enough for climate_risk.storage.LakeStorage.from_env(); the
-      # other three zones fall back to their local-path defaults, which is
-      # harmless because this API never touches them.
       env {
         name  = "AZURE_CLIENT_ID"
         value = var.api_identity_client_id

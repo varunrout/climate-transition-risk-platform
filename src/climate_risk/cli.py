@@ -1035,6 +1035,47 @@ def build_web() -> None:
 
 
 @app.command()
+def publish_product(
+    scenario_target_year: int = typer.Option(
+        2030, help="Target year for the production scenario explorer table."
+    ),
+) -> None:
+    """Build and verify the downstream product publication (gold/bi + gold/web).
+
+    Requires an existing core analytical publication (`climate-risk publish`,
+    or `climate-risk run`, must have already succeeded). Reshapes that
+    already-published release for BI/web consumption; never recomputes
+    scoring, scenarios, or diagnostics. A failure here never rolls back or
+    corrupts the core analytical release -- see ADR 0016/0019 -- but it
+    exits non-zero so operational monitoring sees the product layer is
+    stale, and it re-reads every written file back from storage to verify
+    completeness and integrity before declaring success.
+    """
+    from climate_risk.publishing.product import ProductPublicationError
+    from climate_risk.publishing.product import publish_product as _publish
+
+    log = get_logger(stage="publish-product")
+    lake = prepare_lake_from_env(log)
+    try:
+        result = _publish(lake, log, scenario_target_year=scenario_target_year)
+    except ProductPublicationError as exc:
+        log.error("product publication failed", error=str(exc))
+        typer.echo(f"product publication failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    log.info(
+        "product publication complete",
+        run_id=result.run_id,
+        bi_table_count=result.bi_table_count,
+        web_file_count=result.web_file_count,
+        web_bundle_hash=result.web_bundle_hash,
+    )
+    typer.echo(
+        f"product publication complete for run_id={result.run_id} "
+        f"({result.bi_table_count} BI tables, {result.web_file_count} web files)"
+    )
+
+
+@app.command()
 def export_bi_preview(
     output_path: str = typer.Option(
         "docs/powerbi/portfolio_preview.html",
@@ -1428,6 +1469,27 @@ def run() -> None:
         log.error("storage runtime invariant failed", error=str(exc))
         typer.echo(f"storage runtime invariant failed: {exc}", err=True)
         raise typer.Exit(code=1) from exc
+
+    # Downstream product publication (gold/bi + gold/web) runs after the core
+    # release is durably confirmed. A failure here is reported clearly and
+    # exits non-zero -- so scheduled-run monitoring sees the product layer
+    # went stale -- but it never touches or re-runs the core stages above,
+    # and the already-published core release is left exactly as it is.
+    from climate_risk.publishing.product import ProductPublicationError
+    from climate_risk.publishing.product import publish_product as _publish_product
+
+    try:
+        product_result = _publish_product(LakeStorage.from_env(), log)
+        log.info(
+            "product publication complete",
+            run_id=product_result.run_id,
+            web_bundle_hash=product_result.web_bundle_hash,
+        )
+    except ProductPublicationError as exc:
+        log.error("product publication failed; core release remains valid", error=str(exc))
+        typer.echo(f"product publication failed (core release unaffected): {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
     typer.echo(
         "All implemented stages complete.",
         err=True,
