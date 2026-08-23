@@ -1,0 +1,152 @@
+name: Build and publish container images
+
+on:
+  workflow_dispatch:
+    inputs:
+      image:
+        description: Image to build and publish
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - pipeline
+          - api
+  push:
+    branches: [master]
+    paths:
+      - Dockerfile
+      - Dockerfile.api
+      - src/**
+      - config/**
+      - pyproject.toml
+      - uv.lock
+      - .github/workflows/build-containers.yml
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  pipeline:
+    if: github.event_name == 'push' || inputs.image == 'all' || inputs.image == 'pipeline'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Resolve immutable tags
+        id: vars
+        shell: bash
+        run: |
+          echo "short_sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          echo "image=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/climate-risk-pipeline" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push pipeline image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          tags: |
+            ${{ steps.vars.outputs.image }}:${{ github.sha }}
+            ${{ steps.vars.outputs.image }}:${{ steps.vars.outputs.short_sha }}
+          cache-from: type=gha,scope=climate-risk-pipeline
+          cache-to: type=gha,mode=max,scope=climate-risk-pipeline
+
+      - name: Verify public anonymous pull
+        shell: bash
+        run: |
+          docker logout ghcr.io
+          docker pull "${{ steps.vars.outputs.image }}:${{ steps.vars.outputs.short_sha }}"
+
+      - name: Record pipeline provenance
+        shell: bash
+        run: |
+          {
+            echo "### Pipeline image"
+            echo "- Git SHA: \`${{ github.sha }}\`"
+            echo "- Image: \`${{ steps.vars.outputs.image }}:${{ steps.vars.outputs.short_sha }}\`"
+            echo "- Full-SHA tag: \`${{ steps.vars.outputs.image }}:${{ github.sha }}\`"
+            echo "- Digest: \`${{ steps.build.outputs.digest }}\`"
+            echo "- Anonymous pull: verified"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  api:
+    if: github.event_name == 'push' || inputs.image == 'all' || inputs.image == 'api'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Resolve immutable tags
+        id: vars
+        shell: bash
+        run: |
+          echo "short_sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          echo "image=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/climate-risk-api" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push API image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.api
+          push: true
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          tags: |
+            ${{ steps.vars.outputs.image }}:${{ github.sha }}
+            ${{ steps.vars.outputs.image }}:${{ steps.vars.outputs.short_sha }}
+          cache-from: type=gha,scope=climate-risk-api
+          cache-to: type=gha,mode=max,scope=climate-risk-api
+
+      - name: Verify public anonymous pull
+        shell: bash
+        run: |
+          docker logout ghcr.io
+          docker pull "${{ steps.vars.outputs.image }}:${{ steps.vars.outputs.short_sha }}"
+
+      - name: Record API provenance
+        shell: bash
+        run: |
+          {
+            echo "### API image"
+            echo "- Git SHA: \`${{ github.sha }}\`"
+            echo "- Image: \`${{ steps.vars.outputs.image }}:${{ steps.vars.outputs.short_sha }}\`"
+            echo "- Full-SHA tag: \`${{ steps.vars.outputs.image }}:${{ github.sha }}\`"
+            echo "- Digest: \`${{ steps.build.outputs.digest }}\`"
+            echo "- Anonymous pull: verified"
+          } >> "$GITHUB_STEP_SUMMARY"
