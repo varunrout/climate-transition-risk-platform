@@ -91,6 +91,23 @@ jobs:
             echo "- Anonymous pull: verified"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Write machine-readable image metadata
+        shell: bash
+        run: |
+          cat > pipeline-image.json <<EOF
+          {
+            "git_sha": "${{ github.sha }}",
+            "image": "${{ steps.vars.outputs.image }}:${{ github.sha }}",
+            "digest": "${{ steps.build.outputs.digest }}"
+          }
+          EOF
+
+      - name: Upload pipeline image metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-image
+          path: pipeline-image.json
+
   api:
     if: github.event_name == 'push' || inputs.image == 'all' || inputs.image == 'api'
     runs-on: ubuntu-latest
@@ -150,3 +167,20 @@ jobs:
             echo "- Digest: \`${{ steps.build.outputs.digest }}\`"
             echo "- Anonymous pull: verified"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Write machine-readable image metadata
+        shell: bash
+        run: |
+          cat > api-image.json <<EOF
+          {
+            "git_sha": "${{ github.sha }}",
+            "image": "${{ steps.vars.outputs.image }}:${{ github.sha }}",
+            "digest": "${{ steps.build.outputs.digest }}"
+          }
+          EOF
+
+      - name: Upload API image metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-image
+          path: api-image.json
