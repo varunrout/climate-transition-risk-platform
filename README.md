@@ -251,11 +251,12 @@ Multi-stage, non-root, `python:3.12-slim` base, locked production-only deps.
 Public images on GitHub Container Registry, built on GitHub-hosted runners with
 immutable full-Git-SHA tags, OCI revision labels, and anonymous-pull verification
 in CI:
-`ghcr.io/varunrout/climate-risk-pipeline:f0bf7f5be79e248591a47d38cb949f17b68f178b`
-(digest `sha256:3b20853de6e85ca5cc67ae698576a3a3a55da4ac762103d8d6be2eac794ccbf9`)
-and `ghcr.io/varunrout/climate-risk-api:f0bf7f5be79e248591a47d38cb949f17b68f178b`
-(digest `sha256:46123ace84ab8661c270873b5746a48872c2336b60ee2e62ddf2e1de1c9e7249`)
-— both the current Azure production tags (see ADR 0010, ADR 0019). Each build also
+`ghcr.io/varunrout/climate-risk-pipeline:d4f105e29c40b2d996add8f2adc9481a9091d60b`
+(digest `sha256:b6c85bbe522126b16a030c48ca519b96b33cb2b5d559c68c17043ed82ec5f95d`)
+and `ghcr.io/varunrout/climate-risk-api:d4f105e29c40b2d996add8f2adc9481a9091d60b`
+(digest `sha256:d813c7c03d46ad8c0ef0589b1a58b0c2302ffda077292aa767d00065cf2b1a11`)
+— both the v1.0.0 release's Azure production tags (see ADR 0010, ADR 0019,
+`release/v1.0.0/release-manifest.json`). Each build also
 uploads a machine-readable `pipeline-image.json`/`api-image.json` artifact
 (`git_sha`, `image`, `digest`) so a deploy step never has to copy text out of logs.
 Storage is backend-neutral
