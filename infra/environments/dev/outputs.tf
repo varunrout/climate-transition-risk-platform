@@ -13,3 +13,7 @@ output "image_ref" {
 output "container_app_job_id" {
   value = module.container_apps.job_id
 }
+
+output "api_url" {
+  value = module.container_apps.api_url
+}

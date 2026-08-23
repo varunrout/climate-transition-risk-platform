@@ -5,8 +5,9 @@ locals {
     managed_by  = "terraform"
     owner       = var.owner
   }
-  name_prefix = "${var.project_slug}-${var.environment}"
-  image_ref   = "ghcr.io/${var.ghcr_owner}/${var.ghcr_image_name}:${var.image_tag}"
+  name_prefix   = "${var.project_slug}-${var.environment}"
+  image_ref     = "ghcr.io/${var.ghcr_owner}/${var.ghcr_image_name}:${var.image_tag}"
+  api_image_ref = "ghcr.io/${var.ghcr_owner}/${var.api_ghcr_image_name}:${var.api_image_tag}"
 }
 
 # Single resource group -- no separate dev/staging/prod/shared/networking/
@@ -69,6 +70,12 @@ module "container_apps" {
   image_digest               = var.image_digest
   trigger_type               = var.job_trigger_type
   tags                       = local.tags
+
+  deploy_api             = var.deploy_api
+  api_app_name           = "ca-${local.name_prefix}-api"
+  api_identity_id        = module.identity.api_identity_id
+  api_identity_client_id = module.identity.api_identity_client_id
+  api_image_ref          = local.api_image_ref
 }
 
 # Cost Management budget -- an ALERTING mechanism, not a spending cap. Azure

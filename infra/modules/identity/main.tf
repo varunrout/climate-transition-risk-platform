@@ -1,4 +1,4 @@
-# Two identities, least-privilege, scoped to this resource group only:
+# Three identities, least-privilege, scoped to this resource group only:
 #
 # 1. id-climate-risk-job: the RUNTIME identity Container Apps Jobs run as.
 #    Storage Blob Data Contributor on the lake storage account (read/write
@@ -13,6 +13,12 @@
 #    compromised or misconfigured workflow cannot touch anything outside
 #    rg-climate-risk-dev. It cannot see or modify unrelated resources like
 #    the pre-existing Azure_Learning resource group.
+#
+# 3. id-climate-risk-api: the RUNTIME identity the M10 read-only API
+#    Container App runs as (docs/api/deployment.md). Storage Blob Data
+#    READER only -- it only ever reads gold/web/*.json, never writes --
+#    deliberately not the job identity's Contributor role and not a new
+#    Contributor-scoped identity either.
 
 resource "azurerm_user_assigned_identity" "job" {
   name                = "id-climate-risk-job"
@@ -51,6 +57,19 @@ resource "azurerm_role_assignment" "deploy_rbac_admin_scoped_to_rg" {
   scope                = var.resource_group_id
   role_definition_name = "Role Based Access Control Administrator"
   principal_id         = azurerm_user_assigned_identity.deploy.principal_id
+}
+
+resource "azurerm_user_assigned_identity" "api" {
+  name                = "id-climate-risk-api"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+  tags                = var.tags
+}
+
+resource "azurerm_role_assignment" "api_storage_blob_data_reader" {
+  scope                = var.storage_account_id
+  role_definition_name = "Storage Blob Data Reader"
+  principal_id         = azurerm_user_assigned_identity.api.principal_id
 }
 
 resource "azurerm_federated_identity_credential" "github_actions" {

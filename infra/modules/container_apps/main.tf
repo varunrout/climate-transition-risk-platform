@@ -147,3 +147,81 @@ resource "azurerm_container_app_job" "pipeline" {
 
   tags = var.tags
 }
+
+# M10 read-only API: one Container App (not Job) in the SAME Consumption
+# environment as the pipeline job above -- no second environment, no second
+# Log Analytics workspace. Public HTTP ingress, min_replicas = 0 (true
+# scale-to-zero -- Azure charges nothing while no request has arrived
+# recently), 0.5 vCPU / 1Gi cap when it does run. Public GHCR image again,
+# so no registry credentials. Deploy this only via `var.deploy_api = true`
+# (see infra/environments/dev/variables.tf) so a plain `terraform plan`
+# against an environment that hasn't built/pushed the API image yet stays
+# a no-op for this resource.
+resource "azurerm_container_app" "api" {
+  count                        = var.deploy_api ? 1 : 0
+  name                         = var.api_app_name
+  resource_group_name          = var.resource_group_name
+  container_app_environment_id = azurerm_container_app_environment.main.id
+  revision_mode                = "Single"
+
+  identity {
+    type         = "UserAssigned"
+    identity_ids = [var.api_identity_id]
+  }
+
+  template {
+    min_replicas = 0
+    max_replicas = 1 # portfolio-scale traffic; raise only if genuinely needed
+
+    container {
+      name   = "climate-risk-api"
+      image  = var.api_image_ref
+      cpu    = 0.5
+      memory = "1Gi"
+
+      env {
+        name  = "CLIMATE_RISK_GOLD_ROOT"
+        value = "abfss://gold@${var.storage_account_name}.dfs.core.windows.net/"
+      }
+      # Read-only endpoints never need raw/bronze/silver -- CLIMATE_RISK_GOLD_ROOT
+      # alone is enough for climate_risk.storage.LakeStorage.from_env(); the
+      # other three zones fall back to their local-path defaults, which is
+      # harmless because this API never touches them.
+      env {
+        name  = "AZURE_CLIENT_ID"
+        value = var.api_identity_client_id
+      }
+      env {
+        name  = "CLIMATE_RISK_CONFIG_DIR"
+        value = "/app/config"
+      }
+      env {
+        name  = "CLIMATE_RISK_LOG_LEVEL"
+        value = "INFO"
+      }
+
+      liveness_probe {
+        transport = "HTTP"
+        path      = "/health"
+        port      = 8000
+      }
+      readiness_probe {
+        transport = "HTTP"
+        path      = "/health"
+        port      = 8000
+      }
+    }
+  }
+
+  ingress {
+    external_enabled = true
+    target_port      = 8000
+    transport        = "auto"
+    traffic_weight {
+      percentage      = 100
+      latest_revision = true
+    }
+  }
+
+  tags = var.tags
+}

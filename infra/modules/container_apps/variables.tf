@@ -56,3 +56,33 @@ variable "trigger_type" {
 variable "tags" {
   type = map(string)
 }
+
+variable "deploy_api" {
+  type        = bool
+  description = "Deploy the M10 read-only API Container App. Off by default so a plan against an environment without a built/pushed API image stays a no-op."
+  default     = false
+}
+
+variable "api_app_name" {
+  type        = string
+  description = "Container App name for the read-only API."
+  default     = ""
+}
+
+variable "api_identity_id" {
+  type        = string
+  description = "Resource ID of the API's read-only user-assigned managed identity."
+  default     = ""
+}
+
+variable "api_identity_client_id" {
+  type        = string
+  description = "Client ID of the API's managed identity, passed as AZURE_CLIENT_ID."
+  default     = ""
+}
+
+variable "api_image_ref" {
+  type        = string
+  description = "Full public GHCR image reference for the API, e.g. ghcr.io/<owner>/climate-risk-api:<git-sha>."
+  default     = ""
+}

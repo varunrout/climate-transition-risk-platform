@@ -79,3 +79,20 @@ variable "github_repo" {
   description = "'owner/name' for GitHub OIDC federation. Empty skips it (e.g. before the repo has a GitHub remote)."
   default     = ""
 }
+
+variable "deploy_api" {
+  type        = bool
+  description = "Deploy the M10 read-only API Container App (docs/api/deployment.md). Off by default."
+  default     = false
+}
+
+variable "api_image_tag" {
+  type        = string
+  description = "Immutable git-SHA tag for the API image. Only used when deploy_api = true."
+  default     = ""
+}
+
+variable "api_ghcr_image_name" {
+  type    = string
+  default = "climate-risk-api"
+}

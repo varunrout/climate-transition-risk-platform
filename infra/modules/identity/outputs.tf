@@ -9,3 +9,11 @@ output "job_identity_client_id" {
 output "deploy_identity_client_id" {
   value = azurerm_user_assigned_identity.deploy.client_id
 }
+
+output "api_identity_id" {
+  value = azurerm_user_assigned_identity.api.id
+}
+
+output "api_identity_client_id" {
+  value = azurerm_user_assigned_identity.api.client_id
+}
