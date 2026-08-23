@@ -1,0 +1,24 @@
+[
+  {
+    "run_id": "956d0b4c-3f9a-41d0-ac27-a064486267d0",
+    "started_at": "2026-08-22T15:41:20.371828+00:00",
+    "completed_at": "2026-08-22T15:41:20.432452+00:00",
+    "generated_at": "2026-08-22T15:41:20.432452+00:00",
+    "publish_status": "PUBLISHED",
+    "active_score_version": "v2_energy",
+    "component_version": "energy_component_v2.1",
+    "weights_version": "v2_weights_v1",
+    "production_scenario_method": "empirical_bootstrap_v1",
+    "git_sha": "716286571f1bf30a7fc636b273c5385dc2f53691",
+    "image_ref": null,
+    "image_digest": null,
+    "config_hash": "ac4bfcb823d938d3",
+    "transition_snapshot_id": "adfc6a067fe0cb04",
+    "owid_co2_snapshot_id": "7f78e2b218ce4bb8",
+    "world_bank_wdi_snapshot_id": "21cb9294d95abbb2",
+    "owid_energy_snapshot_id": "77b3db513f02f5ff",
+    "latest_model_eligible_year": 2024,
+    "latest_model_eligible_year_completeness": 1.0,
+    "bi_version": "bi_semantic_v1"
+  }
+]

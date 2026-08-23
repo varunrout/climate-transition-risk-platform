@@ -1,0 +1,74 @@
+{
+  "schema_version": "1.0.0",
+  "generated_at": "2026-08-23T00:42:22.354642+00:00",
+  "source_run_id": "956d0b4c-3f9a-41d0-ac27-a064486267d0",
+  "source_git_sha": "716286571f1bf30a7fc636b273c5385dc2f53691",
+  "active_score_version": "v2_energy",
+  "active_component_version": "energy_component_v2.1",
+  "active_scenario_method": "empirical_bootstrap_v1",
+  "model_eligible_year": 2024,
+  "country_count": 19,
+  "source_snapshot_ids": {
+    "owid_co2": "7f78e2b218ce4bb8",
+    "world_bank_wdi": "21cb9294d95abbb2",
+    "owid_energy": "77b3db513f02f5ff"
+  },
+  "config_hash": "ac4bfcb823d938d3",
+  "web_bundle_hash": "7b77a7fdc8dd959a59791d88815d46050a7cc12f8260a6ae9774c7631689f393",
+  "files": [
+    {
+      "name": "backtest-metrics.json",
+      "row_count": 345,
+      "sha256": "e8ca030cdc714d18550a1ce9db8f94b17aca4ad0096e17a90f73ad0f57a49107",
+      "schema_version": "1.0.0"
+    },
+    {
+      "name": "countries.json",
+      "row_count": 19,
+      "sha256": "0306b29da562b99e7c4d9fa497f868b85af24e1101de72f67ccd5e64ee2dfc30",
+      "schema_version": "1.0.0"
+    },
+    {
+      "name": "country-overview.json",
+      "row_count": 19,
+      "sha256": "a1504763ba77e729e81aebd683e570b0322b4d653cae690f5f7b5a8441f21f78",
+      "schema_version": "1.0.0"
+    },
+    {
+      "name": "country-timeseries.json",
+      "row_count": 3763,
+      "sha256": "020d92f5795d1c0fb52fee71ba72e1bfc6802e5649f3f5a56381e6c391a22ae3",
+      "schema_version": "1.0.0"
+    },
+    {
+      "name": "energy-indicators.json",
+      "row_count": 2307,
+      "sha256": "30f99af46e761d4077462d711040f7cc8d59ba4fc9b847792152ca85514edf08",
+      "schema_version": "1.0.0"
+    },
+    {
+      "name": "regime-diagnostics.json",
+      "row_count": 133,
+      "sha256": "c0e1bf1f0ba347ecff14117680cbd0dcba8a051ec305b34a73b698a7d0e0f25c",
+      "schema_version": "1.0.0"
+    },
+    {
+      "name": "risk-components.json",
+      "row_count": 171,
+      "sha256": "5db479f8155beb56b7568a3630174c25edae349946d98cf60501db2b957d2599",
+      "schema_version": "1.0.0"
+    },
+    {
+      "name": "run-metadata.json",
+      "row_count": 1,
+      "sha256": "8517636b7e6e040ea80248258f22a049175389efe9eb6e80eb583ca83d0bf70f",
+      "schema_version": "1.0.0"
+    },
+    {
+      "name": "scenario-quantiles.json",
+      "row_count": 19,
+      "sha256": "b907c61ad4e8ecbe7fbb47b77236529b70aecd5a669d62a38859dbd010d892fa",
+      "schema_version": "1.0.0"
+    }
+  ]
+}

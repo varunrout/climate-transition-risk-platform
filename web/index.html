@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="G20 sovereign climate transition risk intelligence: production risk scores, energy-transition indicators, forward scenarios, model evidence, and full provenance."
+    />
+    <title>Climate Transition Risk Intelligence</title>
+    <script>
+      // Decode half of the "spa-github-pages" redirect trick (see
+      // public/404.html): if we were redirected here with the real path
+      // encoded as a query string, restore it via history.replaceState
+      // before React Router mounts, so the address bar and initial route
+      // are correct.
+      ;(function (l) {
+        if (l.search[1] === '/') {
+          var decoded = l.search
+            .slice(1)
+            .split('&')
+            .map(function (s) {
+              return s.replace(/~and~/g, '&')
+            })
+            .join('?')
+          window.history.replaceState(null, '', l.pathname.slice(0, -1) + decoded + l.hash)
+        }
+      })(window.location)
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

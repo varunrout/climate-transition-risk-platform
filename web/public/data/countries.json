@@ -1,0 +1,116 @@
+[
+  {
+    "country_iso3": "IDN",
+    "country_name": "Indonesia",
+    "region": "East Asia and Pacific",
+    "income_group": "Upper middle income"
+  },
+  {
+    "country_iso3": "SAU",
+    "country_name": "Saudi Arabia",
+    "region": "Middle East and North Africa",
+    "income_group": "High income"
+  },
+  {
+    "country_iso3": "ZAF",
+    "country_name": "South Africa",
+    "region": "Sub-Saharan Africa",
+    "income_group": "Upper middle income"
+  },
+  {
+    "country_iso3": "TUR",
+    "country_name": "Turkey",
+    "region": "Europe and Central Asia",
+    "income_group": "Upper middle income"
+  },
+  {
+    "country_iso3": "BRA",
+    "country_name": "Brazil",
+    "region": "Latin America and Caribbean",
+    "income_group": "Upper middle income"
+  },
+  {
+    "country_iso3": "MEX",
+    "country_name": "Mexico",
+    "region": "Latin America and Caribbean",
+    "income_group": "Upper middle income"
+  },
+  {
+    "country_iso3": "IND",
+    "country_name": "India",
+    "region": "South Asia",
+    "income_group": "Lower middle income"
+  },
+  {
+    "country_iso3": "ARG",
+    "country_name": "Argentina",
+    "region": "Latin America and Caribbean",
+    "income_group": "Upper middle income"
+  },
+  {
+    "country_iso3": "RUS",
+    "country_name": "Russia",
+    "region": "Europe and Central Asia",
+    "income_group": "Upper middle income"
+  },
+  {
+    "country_iso3": "CHN",
+    "country_name": "China",
+    "region": "East Asia and Pacific",
+    "income_group": "Upper middle income"
+  },
+  {
+    "country_iso3": "USA",
+    "country_name": "United States",
+    "region": "North America",
+    "income_group": "High income"
+  },
+  {
+    "country_iso3": "KOR",
+    "country_name": "South Korea",
+    "region": "East Asia and Pacific",
+    "income_group": "High income"
+  },
+  {
+    "country_iso3": "JPN",
+    "country_name": "Japan",
+    "region": "East Asia and Pacific",
+    "income_group": "High income"
+  },
+  {
+    "country_iso3": "ITA",
+    "country_name": "Italy",
+    "region": "Europe and Central Asia",
+    "income_group": "High income"
+  },
+  {
+    "country_iso3": "CAN",
+    "country_name": "Canada",
+    "region": "North America",
+    "income_group": "High income"
+  },
+  {
+    "country_iso3": "GBR",
+    "country_name": "United Kingdom",
+    "region": "Europe and Central Asia",
+    "income_group": "High income"
+  },
+  {
+    "country_iso3": "DEU",
+    "country_name": "Germany",
+    "region": "Europe and Central Asia",
+    "income_group": "High income"
+  },
+  {
+    "country_iso3": "FRA",
+    "country_name": "France",
+    "region": "Europe and Central Asia",
+    "income_group": "High income"
+  },
+  {
+    "country_iso3": "AUS",
+    "country_name": "Australia",
+    "region": "East Asia and Pacific",
+    "income_group": "High income"
+  }
+]
