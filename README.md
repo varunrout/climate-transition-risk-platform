@@ -24,7 +24,7 @@ there is not claimed here until it is implemented, tested, and committed.
 | M7 | Regime/structural-break research | **Complete**. Structural-break diagnostics are retained for interpretation, but formal regime-aware forecasting is not promoted. Phase 3 decision: **RECENCY_WEIGHTING_ONLY**. Phase 4 decision: **KEEP_EXISTING_EMPIRICAL_BOOTSTRAP_IN_PRODUCTION** because recency gains were small, country robustness failed, and P5-P95 coverage remained below the nominal 90% target. No production score, scenario engine, Azure schedule, or publish contract change. See ADR 0011-0014 plus `docs/m7_phase3_report.md` and `docs/m7_phase4_report.md`. |
 | M8 | Azure runtime | **COMPLETE - production-verified.** Terraform-managed resources live in `rg-climate-risk-dev` (uksouth): ADLS Gen2, four filesystems, Container Apps Environment + Job, two managed identities, RBAC, Log Analytics, lifecycle policy, and budget. Real Container Apps Job executions have succeeded end to end against live ADLS Gen2, including the M6 v2 production run `job-climate-risk-dev-pipeline-xsjvjwd`, with output identical to the local baseline and real Git/image provenance in the manifest. Weekly schedule: Monday 03:00 UTC. See `docs/finops.md`, ADR 0003-0010. |
 | M9 | React web dashboard (canonical product) + superseded Power BI prototype | **COMPLETE — deployed, live, and verified with real portfolio screenshots.** ADR 0016: the canonical M9 product changed from a native Power BI report to a React/TypeScript web dashboard (`web/`) — a distribution/portability decision, not a claim Power BI is technically impossible. The Power BI work (`powerbi/`, `docs/powerbi/`) is preserved as engineering history and marked superseded, not deleted; it includes a real, live-debugged record of 9 Desktop bugs found and fixed, with one unresolved report-canvas defect that ended that route (`docs/powerbi/native_report_status.md`). A deterministic `gold/web/` JSON publication layer (`climate-risk build-web`, ADR 0017) sits downstream of `gold/bi/` with a versioned manifest (schema version, provenance, per-file row counts/SHA-256, bundle hash). The React app (Vite + TypeScript + React Router + TanStack Query + Zod-validated contracts + ECharts) implements all 7 canonical routes against real data, with production (`v2_energy`/`empirical_bootstrap_v1`) vs comparison (`v1`) vs research-only (M7 diagnostics) semantics enforced throughout. Live in-browser verification against the real 19-country bundle caught and fixed a real bug (`echarts-for-react` never called `setOption` under echarts v6; replaced with a direct ECharts binding, `web/src/lib/useEcharts.ts`). **Deployed to GitHub Pages** (zero cost, `.github/workflows/deploy-web.yml`): **https://varunrout.github.io/climate-transition-risk-platform/**. 8 real Playwright screenshots (7 routes + one mobile capture) taken directly against that live deployment, chart-paint-aware (not faked, not loading states) — see `docs/web/screenshots/`. See ADR 0016, ADR 0017. |
-| M10 | Read-only FastAPI serving layer | Not implemented |
+| M10 | Read-only FastAPI serving layer | **Code complete and locally verified; Azure deployment in progress.** Serves published `gold/web` output (never recomputes analytics), fails to start on an inconsistent bundle, versioned `/api/v1` contracts (Pydantic v2, no bare dicts), production/research semantics enforced in the response models. 36 new tests (275 total), including contract tests against real published artifacts. Dedicated `Dockerfile.api`, built and pushed to GHCR. Azure design reuses all existing infrastructure (Terraform plan verified 3 add / 0 change / 0 destroy: one scale-to-zero Container App, a dedicated read-only managed identity, one RBAC assignment) -- the identity and RBAC assignment are live; Container App creation is pending the GHCR package's visibility being switched to public (an anonymous pull for a private package fails identically for both `docker pull` and Azure, by design -- see `docs/api/deployment.md`). Web dashboard (M9) unmodified and still fully independent. See ADR 0018, `docs/api/`. |
 | M11 | v1 release (data revision analysis, reproducibility test, evidence bundle, governance/hardening) | Not implemented. The fail-closed `publish` barrier itself is implemented and production-verified (a prerequisite for M11, not M11 itself) — see `docs/adr/`. |
 
 Production container: **implemented, pushed, and running in production**.
@@ -68,7 +68,8 @@ uv run climate-risk m7-phase4       # M7 phase 4 research (ADR 0014): recency ha
 uv run climate-risk build-bi        # M9 BI semantic publication tables under gold/bi/ (still used, feeds build-web)
 uv run climate-risk export-bi-preview # superseded Power BI static portfolio preview from gold/bi/
 uv run climate-risk build-web       # M9 web publication bundle (JSON) under gold/web/, downstream of gold/bi/
-uv run pytest                       # 239 tests
+uv run climate-risk api             # M10 read-only API (requires `uv sync --extra api`); see "Read-only API" below
+uv run pytest                       # 275 tests
 uv run ruff check .
 uv run mypy src
 ```
@@ -101,6 +102,32 @@ credentials in the frontend). Deploys to GitHub Pages at zero cost via
 `.github/workflows/deploy-web.yml` on every push to `master` touching
 `web/`. See `docs/adr/0016-m9-react-web-supersedes-power-bi.md` and
 `docs/adr/0017-m9-web-bundle-snapshot-and-publication-boundary.md`.
+
+### Read-only API (M10)
+
+Programmatic access, API/portfolio demonstration, and future
+integrations -- **not** required by the web dashboard above, which stays
+fully independent. Read-only (`GET` only), serves already-published
+`gold/web` output, fails to start rather than serve an inconsistent
+bundle. See `docs/api/` (README, endpoints, contracts, deployment,
+security) and ADR 0018.
+
+```bash
+uv sync --extra api
+uv run climate-risk api        # http://127.0.0.1:8000, docs at /docs and /redoc
+
+curl http://127.0.0.1:8000/api/v1/meta
+curl http://127.0.0.1:8000/api/v1/countries/GBR
+curl http://127.0.0.1:8000/api/v1/countries/IND/scenario
+curl http://127.0.0.1:8000/api/v1/diagnostics/regimes/MEX
+```
+
+Architecture: `gold/bi` -> `gold/web` (JSON, same bundle the dashboard
+reads) -> validated once at API startup -> served from memory. No model
+recomputation in request handlers. Production score/scenario semantics
+(`v2_energy` / `empirical_bootstrap_v1`) and research-only M7 diagnostics
+(`production_use: false`) are enforced in the response contracts, not
+just by convention.
 
 `ingest` downloads the live Our World in Data CO2 dataset and World Bank WDI
 GDP/population indicators for the 19 sovereign G20 countries, writes an
