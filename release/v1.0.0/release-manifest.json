@@ -1,6 +1,7 @@
 {
   "release_version": "1.0.0",
-  "release_git_sha": "PENDING_FILLED_BY_FINAL_RELEASE_COMMIT",
+  "release_git_sha": "5958ab4a49090561c0d5a1f308845c5ea4e5f85c",
+  "release_git_sha_note": "The v1.0.0 tag points at this commit's own immediate child (a single small follow-up commit that records this exact SHA here, since a commit cannot self-referentially embed its own hash) -- both commits together are the release; the child adds nothing except this field.",
   "runtime_pipeline_source_sha": "f0bf7f5be79e248591a47d38cb949f17b68f178b",
   "runtime_api_source_sha": "f0bf7f5be79e248591a47d38cb949f17b68f178b",
   "runtime_source_note": "v1.0.0's code/doc changes are non-runtime (LICENSE, docs, version metadata fields not read at runtime -- API_VERSION was already hardcoded to 1.0.0 independent of pyproject.toml). No container rebuild was required or performed for this release; the runtime images in production are unchanged from M10 and are documented here as a legitimate, explicitly-noted distinction from release_git_sha, per this project's own release-tagging governance rule.",

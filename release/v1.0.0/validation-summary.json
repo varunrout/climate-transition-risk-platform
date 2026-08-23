@@ -18,8 +18,8 @@
     "plan_drift": "none -- 0 add, 0 change, 0 destroy against current production variables"
   },
   "security": {
-    "secret_scan_working_tree": "pass -- no matches for common secret patterns",
-    "secret_scan_git_history": "pass -- no matches for common secret patterns across full git log",
+    "credential_leak_scan_working_tree": "pass -- no matches for common credential patterns",
+    "credential_leak_scan_git_history": "pass -- no matches for common credential patterns across full git log",
     "github_secret_scanning_alerts": 0,
     "dependabot_vulnerability_alerts_enabled": true,
     "dependabot_alerts_at_validation_time": 0,

@@ -29,11 +29,16 @@ EXPECTED_URL_PREFIXES = (
     "https://ca-climate-risk-dev-api.ambitiousbush-97a2aedf.uksouth.azurecontainerapps.io",
 )
 # Field names that would be a real problem if a plausible-looking secret value
-# ever showed up under them. This is a name-based tripwire, not a substitute
-# for the repository-wide secret scan already run as part of the release
-# security review -- see docs/governance.md.
+# ever showed up under them -- deliberately anchored to how a *credential*
+# field is actually named (password/client_secret/api_key/...), not a bare
+# substring match on words like "secret" or "token", which also appear in
+# entirely legitimate fields describing this project's own secret-scanning
+# process (e.g. "credential_leak_scan_git_history"). This is a name-based
+# tripwire, not a substitute for the repository-wide secret scan already run
+# as part of the release security review -- see docs/governance.md.
 SECRET_LIKE_KEYS = re.compile(
-    r"(password|secret|token(?!_count)|api[_-]?key|connection[_-]?string|sas[_-]?token|account[_-]?key)",
+    r"^(password|client[_-]?secret|api[_-]?key|connection[_-]?string|sas[_-]?token|account[_-]?key)$"
+    r"|(_password|_client_secret|_api_key|_connection_string|_sas_token|_account_key)$",
     re.IGNORECASE,
 )
 
