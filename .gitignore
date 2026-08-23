@@ -2,6 +2,13 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+
+# web (React dashboard, M9)
+node_modules/
+web/dist/
+web/.vite/
+web/coverage/
+web/*.tsbuildinfo
 .uv/
 uv.lock.tmp
 .mypy_cache/

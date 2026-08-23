@@ -1,3 +1,9 @@
+> **SUPERSEDED PRODUCT PROTOTYPE -- NOT CURRENT PRODUCT LAYER.** See
+> [`docs/powerbi/README.md`](README.md) and
+> [ADR 0016](../adr/0016-m9-react-web-supersedes-power-bi.md). The React
+> web dashboard under `web/` is now the canonical M9 product. This record
+> is preserved unmodified below as engineering history.
+
 # Native Power BI Report -- Status and Validation Record
 
 ## Environment detection (performed, not assumed)
