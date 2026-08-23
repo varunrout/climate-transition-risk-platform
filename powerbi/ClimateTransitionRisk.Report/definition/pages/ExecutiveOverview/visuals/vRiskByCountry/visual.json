@@ -1,6 +1,6 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.4.0/schema.json",
-  "name": "vRiskMap",
+  "name": "vRiskByCountry",
   "position": {
     "x": 660,
     "y": 180,
@@ -9,7 +9,7 @@
     "height": 240
   },
   "visual": {
-    "visualType": "filledMap",
+    "visualType": "barChart",
     "query": {
       "queryState": {
         "Category": {
@@ -30,7 +30,7 @@
             }
           ]
         },
-        "Values": {
+        "Y": {
           "projections": [
             {
               "field": {

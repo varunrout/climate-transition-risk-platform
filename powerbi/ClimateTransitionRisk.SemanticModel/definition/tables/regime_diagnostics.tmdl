@@ -199,8 +199,9 @@ table regime_diagnostics
 		mode: import
 		source =
 				let
-					Source = Parquet.Document(File.Contents(#"GoldBiFolderPath" & "regime_diagnostics.parquet"))
+					Source = Parquet.Document(File.Contents(#"GoldBiFolderPath" & "regime_diagnostics.parquet")),
+					TypedSource = Table.TransformColumnTypes(Source, {{"country_iso3", type text}, {"series_name", type text}, {"as_of_year", Int64.Type}, {"latest_regime_start_year", Int64.Type}, {"years_in_current_regime", Int64.Type}, {"break_count", Int64.Type}, {"strongest_break_year", type number}, {"strongest_break_strength", type number}, {"pre_break_slope", type number}, {"post_break_slope", type number}, {"slope_delta", type number}, {"regime_direction", type text}, {"regime_confidence", type number}, {"current_regime_label", type text}, {"break_method", type text}, {"break_version", type text}, {"country_name", type text}, {"region", type text}, {"income_group", type text}, {"diagnostic_status", type text}, {"used_in_production_score", type logical}, {"used_in_production_scenario", type logical}, {"bi_version", type text}})
 				in
-					Source
+					TypedSource
 
 	annotation PBI_ResultType = Table

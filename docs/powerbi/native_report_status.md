@@ -126,8 +126,112 @@ Desktop itself.
    `docs/powerbi/portfolio_story.md` for why PBIX is not committed to the
    repository).
 
+## Update: live Desktop validation session (2026-08-22/23)
+
+Power BI Desktop (2.157.879.0, August 2026 release, PBIR/enhanced-report-format
+preview flags on) was later confirmed installed and opened against this
+project. This section records what was found and fixed during that session,
+and the unresolved blocker that ended it.
+
+### Real defects found and fixed (each confirmed against the actual
+Microsoft JSON schemas, not guessed)
+
+1. **`country_overview.tmdl` -- invalid multi-line DAX.** The `'Risk Band
+   Colour'` measure's `SWITCH(TRUE(), ...)` body started on the same line as
+   `=` and continued on following lines, which TMDL's parser rejects.
+   Fixed by making it fully single-line. Confirmed resolved (the exact
+   parse error disappeared on reload).
+2. **`dim_year` calculated table -- TOM relationship load failure**
+   (`invalid column ID 254`). Root cause not fully diagnosed; since no
+   visual referenced `dim_year`, the table, its three relationships, and
+   `model.tmdl`'s references to it were removed rather than debugged
+   further. Confirmed resolved.
+3. **Power Query type-inference crash** (`'dataType' argument cannot be
+   null`) during Desktop's `DetectTablesWithMissingData` step, triggered by
+   columns that are entirely null in the current data (e.g.
+   `run_metadata.image_ref`). Fixed by adding an explicit
+   `Table.TransformColumnTypes` step to every table's M partition. Confirmed
+   resolved.
+4. **M language syntax error** -- the type-inference fix above used
+   `{#"col", type text}`, but `#"identifier"` in M is a *quoted identifier*
+   (a variable/step reference), not a string literal, so Desktop tried to
+   resolve every column name as an undefined variable ("name wasn't
+   recognized"). Fixed by changing every `{#"col", ...}` to `{"col", ...}`
+   across all 8 table files. Confirmed resolved -- model loads cleanly, all
+   8 tables visible with no warnings.
+5. **`pages.json` used a schema URL that does not exist**
+   (`.../definition/pages/1.4.0/schema.json` -- confirmed 404). The correct
+   schema, confirmed by fetching it directly, is
+   `.../definition/pagesMetadata/1.0.0/schema.json`. Fixed.
+6. **`report.json` used a schema URL that does not exist**
+   (`.../definition/report/1.4.0/schema.json` -- confirmed 404). The correct
+   schema is `.../definition/report/1.0.0/schema.json`, under which
+   `themeCollection` is a **required** field -- the opposite of an earlier
+   failed fix attempt (in this same session) that removed it. Restored with
+   a verified real Microsoft base theme (`CY24SU10`, `SharedResources`).
+   Fixed.
+7. **`definition.pbir` and `definition.pbism` were both missing the
+   required `$schema` field entirely** (confirmed against the real
+   `definitionProperties` schemas for report and semantic-model
+   respectively). Fixed.
+8. A nonstandard `definition/version.json` file was removed on the
+   (incorrect) belief it wasn't part of the real PBIR spec, based on
+   secondary web sources. **Desktop's own loader proved this wrong**
+   (`Cannot find file 'version.json'`, thrown from
+   `ExplorationSerializer.GetFileData(..., isRequired: true)`) -- it is a
+   real, required file. Restored immediately once Desktop's own error
+   contradicted the earlier (incorrect) research-based assumption.
+
+### Unresolved blocker (session ended here)
+
+After fixes 1-7 above, the semantic model loads cleanly (all 8 tables,
+all measures, no Power Query warnings), but **the report canvas itself
+fails to render** with:
+
+```
+JS Error Message: Cannot read properties of undefined (reading 'visualContainers')
+Component: DesktopExplorationComponent / onExplorationActivated
+via ViewSelectionService.onViewSelectionChanged
+```
+
+Diagnostic isolation performed (each confirmed by an identical, unchanged
+error across reloads):
+
+- Removing the one `filledMap` visual (replacing with `barChart`) -- no
+  change.
+- Removing the unverified `themeCollection.baseTheme` reference -- no
+  change (and was later found to be required anyway, see fix #6).
+- Emptying the Executive Overview page's `visuals/` folder entirely (after
+  the schema fixes above were in place) -- **identical crash with zero
+  visuals present**, ruling out visual content entirely.
+- Changing `pages.json`'s `activePageName` from `ExecutiveOverview` to
+  `CountryProfile` -- **identical crash**, ruling out that specific page
+  (or its identity) as the cause. The crash follows whichever page is set
+  active on load, independent of that page's content.
+
+This means the defect is not in any page's or visual's content -- it is
+somewhere in the report/model activation path that current diagnostics
+have not isolated further. All JSON files that could be checked against a
+real, fetched Microsoft schema have been checked and are valid; the
+remaining candidates (an undiagnosed Desktop-side PBIR/TMDL
+interoperability issue, a schema-version mismatch not yet identified, or a
+defect in a file/mechanism not covered by the public schemas) were not
+reached before this validation session was paused.
+
+**Working tree status**: all fixes above (1-8) are applied on disk but
+**not committed**. `git status` shows these as uncommitted changes against
+the `39a7af6` baseline.
+
 ## Status
 
-**M9 CODE/DATA COMPLETE. NATIVE REPORT PROJECT AUTHORED BUT BLOCKED FROM
-DESKTOP VALIDATION -- Power BI Desktop is not installed in this
-environment, so the PBIP project above has never actually been opened.**
+**M9 BLOCKED, NOT COMPLETE. The native PBIP/TMDL/PBIR project has real,
+confirmed authoring defects that were found and fixed live against Power BI
+Desktop across nine debugging rounds, and the semantic model now loads
+cleanly -- but the report canvas itself still fails to render with an
+unresolved `visualContainers` activation error, independent of page/visual
+content. No page has been confirmed to render, no screenshots exist, and
+no interaction/measure/production-semantics validation was possible. Per
+the project's stated criterion, M9 is explicitly NOT marked complete.
+Live Desktop debugging was paused by the user's direction on 2026-08-23 to
+evaluate a different delivery path (a web-based dashboard) instead of
+continuing to chase this defect.**

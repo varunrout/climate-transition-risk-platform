@@ -222,8 +222,9 @@ table backtest_metrics
 		mode: import
 		source =
 				let
-					Source = Parquet.Document(File.Contents(#"GoldBiFolderPath" & "backtest_metrics.parquet"))
+					Source = Parquet.Document(File.Contents(#"GoldBiFolderPath" & "backtest_metrics.parquet")),
+					TypedSource = Table.TransformColumnTypes(Source, {{"model_variant", type text}, {"n_splits", type number}, {"mae", type number}, {"rmse", type number}, {"median_ae", type number}, {"coverage_90", type number}, {"mean_interval_width_90", type number}, {"metric_grain", type text}, {"nominal_coverage_90", type number}, {"calibration_gap_90", type number}, {"absolute_error", type number}, {"actual", type number}, {"country_iso3", type text}, {"covered_90", type text}, {"forecast_p05", type number}, {"forecast_p50", type number}, {"forecast_p95", type number}, {"horizon_years", type number}, {"interval_width_90", type number}, {"origin_year", type number}, {"target_year", type number}, {"production_model_variant", type text}, {"bi_version", type text}})
 				in
-					Source
+					TypedSource
 
 	annotation PBI_ResultType = Table

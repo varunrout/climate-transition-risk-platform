@@ -6,7 +6,7 @@ model Model
 		legacyRedirects
 		returnErrorValuesAsNull
 
-annotation PBI_QueryOrder = ["GoldBiFolderPath","country_overview","country_timeseries","risk_components","scenario_quantiles","backtest_metrics","energy_indicators","regime_diagnostics","run_metadata","dim_year"]
+annotation PBI_QueryOrder = ["GoldBiFolderPath","country_overview","country_timeseries","risk_components","scenario_quantiles","backtest_metrics","energy_indicators","regime_diagnostics","run_metadata"]
 
 annotation __PBI_TimeIntelligenceEnabled = 0
 
@@ -18,7 +18,6 @@ ref table backtest_metrics
 ref table energy_indicators
 ref table regime_diagnostics
 ref table run_metadata
-ref table dim_year
 
 ref expression GoldBiFolderPath
 

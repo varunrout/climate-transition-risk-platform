@@ -436,21 +436,16 @@ table country_overview
 		formatString: 0.000000
 		lineageTag: 909b490f-7a0f-4ebc-8969-b5ea4700fe2d
 
-	measure 'Risk Band Colour' = SWITCH (
-			TRUE (),
-			[Active Transition Risk Score] >= 80, "#C0392B",
-			[Active Transition Risk Score] >= 60, "#E67E22",
-			[Active Transition Risk Score] >= 40, "#D4AC0D",
-			"#2E86AB"
-		)
+	measure 'Risk Band Colour' = SWITCH ( TRUE (), [Active Transition Risk Score] >= 80, "#C0392B", [Active Transition Risk Score] >= 60, "#E67E22", [Active Transition Risk Score] >= 40, "#D4AC0D", "#2E86AB" )
 		lineageTag: 50f95f23-b815-486f-b0da-1fa11845c4e4
 
 	partition country_overview = m
 		mode: import
 		source =
 				let
-					Source = Parquet.Document(File.Contents(#"GoldBiFolderPath" & "country_overview.parquet"))
+					Source = Parquet.Document(File.Contents(#"GoldBiFolderPath" & "country_overview.parquet")),
+					TypedSource = Table.TransformColumnTypes(Source, {{"country_iso3", type text}, {"country_name", type text}, {"g20_flag", type logical}, {"region", type text}, {"income_group", type text}, {"valid_from", type text}, {"valid_to", type text}, {"score_version", type text}, {"component_version", type text}, {"weights_version", type text}, {"score_total", type number}, {"score_pace", type number}, {"score_coupling", type number}, {"score_volatility", type number}, {"score_forward_downside", type number}, {"score_energy", type number}, {"energy_confidence", type number}, {"data_confidence_score", type number}, {"weight_coverage", type number}, {"rank", Int64.Type}, {"rank_band", type text}, {"score_total_v1", type number}, {"rank_v1", Int64.Type}, {"latest_transition_year", Int64.Type}, {"carbon_intensity_gdp", type number}, {"co2_per_capita", type number}, {"energy_intensity_gdp", type number}, {"is_core_complete", type logical}, {"missing_feature_count", Int64.Type}, {"transition_snapshot_id", type text}, {"latest_energy_year", Int64.Type}, {"coal_share_elec", type number}, {"fossil_share_elec", type number}, {"low_carbon_share_elec", type number}, {"renewables_share_elec", type number}, {"transition_velocity", type number}, {"stalled_transition_residual_pp", type number}, {"active_score_version", type text}, {"is_active_score", type logical}, {"score_delta_v2_minus_v1", type number}, {"rank_delta_v2_minus_v1", Int64.Type}, {"risk_segment", type text}, {"latest_successful_run_id", type text}, {"latest_successful_run_completed_at", type text}, {"publish_status", type text}, {"bi_version", type text}})
 				in
-					Source
+					TypedSource
 
 	annotation PBI_ResultType = Table

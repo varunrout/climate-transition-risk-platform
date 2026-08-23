@@ -300,8 +300,9 @@ table energy_indicators
 		mode: import
 		source =
 				let
-					Source = Parquet.Document(File.Contents(#"GoldBiFolderPath" & "energy_indicators.parquet"))
+					Source = Parquet.Document(File.Contents(#"GoldBiFolderPath" & "energy_indicators.parquet")),
+					TypedSource = Table.TransformColumnTypes(Source, {{"country_iso3", type text}, {"year", Int64.Type}, {"coal_share_elec", type number}, {"gas_share_elec", type number}, {"oil_share_elec", type number}, {"fossil_share_elec", type number}, {"renewables_share_elec", type number}, {"low_carbon_share_elec", type number}, {"nuclear_share_elec", type number}, {"solar_share_elec", type number}, {"wind_share_elec", type number}, {"hydro_share_elec", type number}, {"biofuel_share_elec", type number}, {"snapshot_set_id", type text}, {"country_name", type text}, {"region", type text}, {"income_group", type text}, {"latest_feature_latest_year", Int64.Type}, {"latest_feature_trailing_window_years", Int64.Type}, {"latest_feature_sample_size", Int64.Type}, {"latest_feature_coal_share_elec", type number}, {"latest_feature_fossil_share_elec", type number}, {"latest_feature_renewables_share_elec", type number}, {"latest_feature_low_carbon_share_elec", type number}, {"latest_feature_coal_trend_pp_per_year", type number}, {"latest_feature_clean_power_momentum_pp_per_year", type number}, {"latest_feature_renewable_buildout_rate_pp_per_year", type number}, {"latest_feature_fossil_persistence_mean_pct", type number}, {"latest_feature_transition_velocity", type number}, {"latest_feature_stalled_transition_residual_pp", type number}, {"latest_feature_coal_share_elec_percentile", type number}, {"latest_feature_low_carbon_share_elec_percentile", type number}, {"bi_version", type text}})
 				in
-					Source
+					TypedSource
 
 	annotation PBI_ResultType = Table

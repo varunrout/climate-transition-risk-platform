@@ -268,8 +268,9 @@ table country_timeseries
 		mode: import
 		source =
 				let
-					Source = Parquet.Document(File.Contents(#"GoldBiFolderPath" & "country_timeseries.parquet"))
+					Source = Parquet.Document(File.Contents(#"GoldBiFolderPath" & "country_timeseries.parquet")),
+					TypedSource = Table.TransformColumnTypes(Source, {{"country_iso3", type text}, {"year", Int64.Type}, {"co2_mt", type number}, {"real_gdp", type number}, {"secondary_gdp_owid", type number}, {"population", type number}, {"carbon_intensity_gdp", type number}, {"co2_per_capita", type number}, {"energy_intensity_gdp", type number}, {"primary_energy_twh", type number}, {"is_core_complete", type logical}, {"missing_feature_count", Int64.Type}, {"imputation_mask", type text}, {"snapshot_set_id", type text}, {"coal_share_elec", type number}, {"gas_share_elec", type number}, {"oil_share_elec", type number}, {"fossil_share_elec", type number}, {"renewables_share_elec", type number}, {"low_carbon_share_elec", type number}, {"nuclear_share_elec", type number}, {"solar_share_elec", type number}, {"wind_share_elec", type number}, {"hydro_share_elec", type number}, {"biofuel_share_elec", type number}, {"snapshot_set_id_energy", type text}, {"country_name", type text}, {"region", type text}, {"income_group", type text}, {"bi_version", type text}})
 				in
-					Source
+					TypedSource
 
 	annotation PBI_ResultType = Table

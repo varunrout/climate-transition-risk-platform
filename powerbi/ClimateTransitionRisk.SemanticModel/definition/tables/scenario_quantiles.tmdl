@@ -173,8 +173,9 @@ table scenario_quantiles
 		mode: import
 		source =
 				let
-					Source = Parquet.Document(File.Contents(#"GoldBiFolderPath" & "scenario_quantiles.parquet"))
+					Source = Parquet.Document(File.Contents(#"GoldBiFolderPath" & "scenario_quantiles.parquet")),
+					TypedSource = Table.TransformColumnTypes(Source, {{"country_iso3", type text}, {"origin_year", Int64.Type}, {"target_year", Int64.Type}, {"scenario_horizon_years", Int64.Type}, {"scenario_method", type text}, {"scenario_status", type text}, {"forecast_p05", type number}, {"forecast_p50", type number}, {"forecast_p95", type number}, {"deterministic_baseline", type number}, {"prob_below_origin_value", type number}, {"simulation_count", Int64.Type}, {"random_seed", Int64.Type}, {"experimental_variant", type logical}, {"bi_version", type text}, {"country_name", type text}, {"region", type text}, {"income_group", type text}})
 				in
-					Source
+					TypedSource
 
 	annotation PBI_ResultType = Table

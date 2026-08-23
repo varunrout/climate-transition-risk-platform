@@ -169,11 +169,20 @@ Recommended relationships:
 | country_overview.country_iso3 | regime_diagnostics.country_iso3 | 1:* | single |
 | country_overview.country_iso3 | backtest_metrics.country_iso3 | 1:* | single |
 
-Create a calculated or imported `dim_year` table in Power BI if needed:
-
-- `dim_year[year]` -> `country_timeseries[year]`
-- `dim_year[year]` -> `energy_indicators[year]`
-- `dim_year[year]` -> `regime_diagnostics[as_of_year]`
+A calculated `dim_year` table (`DISTINCT(UNION(...))` over the three
+year-grained fact tables' year columns) was implemented and included in the
+native project, but Power BI Desktop 2.157.879.0 rejected it on load
+(`DataModelLoadFailed` / `PFE_TM_RELATIONSHIP_END_COLUMN_INVALID`,
+"invalid column ID 254" on the first relationship into it) -- a real,
+reproducible Desktop compatibility issue, not a naming or syntax mistake
+(every other relationship and every visual's field reference was
+independently cross-checked and resolves correctly). Since no page's
+visuals actually filtered through `dim_year` (each chart uses its own
+fact table's year/`as_of_year` column directly), it and its three
+relationships were removed rather than debugged further -- see ADR 0015
+and `docs/powerbi/native_report_status.md` for the full incident record.
+Revisit only if a future page genuinely needs a shared year slicer across
+`country_timeseries`, `energy_indicators`, and `regime_diagnostics`.
 
 Avoid bidirectional filters unless a specific visual interaction requires it.
 

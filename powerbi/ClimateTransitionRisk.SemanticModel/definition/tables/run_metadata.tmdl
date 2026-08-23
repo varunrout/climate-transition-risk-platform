@@ -206,8 +206,9 @@ table run_metadata
 		mode: import
 		source =
 				let
-					Source = Parquet.Document(File.Contents(#"GoldBiFolderPath" & "run_metadata.parquet"))
+					Source = Parquet.Document(File.Contents(#"GoldBiFolderPath" & "run_metadata.parquet")),
+					TypedSource = Table.TransformColumnTypes(Source, {{"run_id", type text}, {"started_at", type text}, {"completed_at", type text}, {"generated_at", type text}, {"publish_status", type text}, {"active_score_version", type text}, {"component_version", type text}, {"weights_version", type text}, {"production_scenario_method", type text}, {"git_sha", type text}, {"image_ref", type text}, {"image_digest", type text}, {"config_hash", type text}, {"azure_job_execution_id", type text}, {"transition_silver_path", type text}, {"energy_silver_path", type text}, {"transition_snapshot_id", type text}, {"owid_co2_snapshot_id", type text}, {"world_bank_wdi_snapshot_id", type text}, {"owid_energy_snapshot_id", type text}, {"latest_model_eligible_year", Int64.Type}, {"latest_model_eligible_year_completeness", type number}, {"bi_version", type text}})
 				in
-					Source
+					TypedSource
 
 	annotation PBI_ResultType = Table

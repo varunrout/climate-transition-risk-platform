@@ -92,8 +92,9 @@ table risk_components
 		mode: import
 		source =
 				let
-					Source = Parquet.Document(File.Contents(#"GoldBiFolderPath" & "risk_components.parquet"))
+					Source = Parquet.Document(File.Contents(#"GoldBiFolderPath" & "risk_components.parquet")),
+					TypedSource = Table.TransformColumnTypes(Source, {{"country_iso3", type text}, {"score_version", type text}, {"component_name", type text}, {"component_score", type number}, {"nominal_weight", type number}, {"effective_weight", type number}, {"is_active_score", type logical}, {"component_version", type text}, {"weights_version", type text}, {"bi_version", type text}})
 				in
-					Source
+					TypedSource
 
 	annotation PBI_ResultType = Table
