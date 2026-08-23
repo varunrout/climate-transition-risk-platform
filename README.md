@@ -23,8 +23,8 @@ there is not claimed here until it is implemented, tested, and committed.
 | M6 | Energy-system transition features | **COMPLETE - production-verified in Azure.** Phase 1 (ADR 0007): OWID `energy-data` verified and ingested. Phase 2 (ADR 0008): pre-registered gate ACCEPTed the energy component (`p <= 0.10`, positive MAE improvement, weight robustness). Phase 3 (ADR 0009): 2000-permutation hardening, redundancy-reduced 2-signal spec frozen as `energy_component_v2.1`, `score_version=v2_energy`. `cli.score()` computes **both v1 and v2**; `cli.publish()` **requires both** and declares v2 active while preserving v1 as a comparison artifact. ADR 0010 records the failed `7f11e31` Azure promotion, the proven local-storage fallback root cause, the preventive invariant, the corrected `95b7fa4` image, external Entra-authenticated ADLS verification, manifest/pointer consistency, and local/Azure parity. |
 | M7 | Regime/structural-break research | **Complete**. Structural-break diagnostics are retained for interpretation, but formal regime-aware forecasting is not promoted. Phase 3 decision: **RECENCY_WEIGHTING_ONLY**. Phase 4 decision: **KEEP_EXISTING_EMPIRICAL_BOOTSTRAP_IN_PRODUCTION** because recency gains were small, country robustness failed, and P5-P95 coverage remained below the nominal 90% target. No production score, scenario engine, Azure schedule, or publish contract change. See ADR 0011-0014 plus `docs/m7_phase3_report.md` and `docs/m7_phase4_report.md`. |
 | M8 | Azure runtime | **COMPLETE - production-verified.** Terraform-managed resources live in `rg-climate-risk-dev` (uksouth): ADLS Gen2, four filesystems, Container Apps Environment + Job, two managed identities, RBAC, Log Analytics, lifecycle policy, and budget. Real Container Apps Job executions have succeeded end to end against live ADLS Gen2, including the M6 v2 production run `job-climate-risk-dev-pipeline-xsjvjwd`, with output identical to the local baseline and real Git/image provenance in the manifest. Weekly schedule: Monday 03:00 UTC. See `docs/finops.md`, ADR 0003-0010. |
-| M9 | React web dashboard (canonical product) + superseded Power BI prototype | **COMPLETE — deployed, live, and verified with real portfolio screenshots.** ADR 0016: the canonical M9 product changed from a native Power BI report to a React/TypeScript web dashboard (`web/`) — a distribution/portability decision, not a claim Power BI is technically impossible. The Power BI work (`powerbi/`, `docs/powerbi/`) is preserved as engineering history and marked superseded, not deleted; it includes a real, live-debugged record of 9 Desktop bugs found and fixed, with one unresolved report-canvas defect that ended that route (`docs/powerbi/native_report_status.md`). A deterministic `gold/web/` JSON publication layer (`climate-risk build-web`, ADR 0017) sits downstream of `gold/bi/` with a versioned manifest (schema version, provenance, per-file row counts/SHA-256, bundle hash). The React app (Vite + TypeScript + React Router + TanStack Query + Zod-validated contracts + ECharts) implements all 7 canonical routes against real data, with production (`v2_energy`/`empirical_bootstrap_v1`) vs comparison (`v1`) vs research-only (M7 diagnostics) semantics enforced throughout. Live in-browser verification against the real 19-country bundle caught and fixed a real bug (`echarts-for-react` never called `setOption` under echarts v6; replaced with a direct ECharts binding, `web/src/lib/useEcharts.ts`). **Deployed to GitHub Pages** (zero cost, `.github/workflows/deploy-web.yml`): **https://varunrout.github.io/climate-transition-risk-platform/**. 8 real Playwright screenshots (7 routes + one mobile capture) taken directly against that live deployment, chart-paint-aware (not faked, not loading states) — see `docs/web/screenshots/`. See ADR 0016, ADR 0017. |
-| M10 | Read-only FastAPI serving layer | **Code complete and locally verified; Azure deployment in progress.** Serves published `gold/web` output (never recomputes analytics), fails to start on an inconsistent bundle, versioned `/api/v1` contracts (Pydantic v2, no bare dicts), production/research semantics enforced in the response models. 36 new tests (275 total), including contract tests against real published artifacts. Dedicated `Dockerfile.api`, built and pushed to GHCR. Azure design reuses all existing infrastructure (Terraform plan verified 3 add / 0 change / 0 destroy: one scale-to-zero Container App, a dedicated read-only managed identity, one RBAC assignment) -- the identity and RBAC assignment are live; Container App creation is pending the GHCR package's visibility being switched to public (an anonymous pull for a private package fails identically for both `docker pull` and Azure, by design -- see `docs/api/deployment.md`). Web dashboard (M9) unmodified and still fully independent. See ADR 0018, `docs/api/`. |
+| M9 | React web dashboard (canonical product) + superseded Power BI prototype | **COMPLETE — deployed, live, and verified with real portfolio screenshots.** ADR 0016: the canonical M9 product changed from a native Power BI report to a React/TypeScript web dashboard (`web/`) — a distribution/portability decision, not a claim Power BI is technically impossible. The Power BI work (`powerbi/`, `docs/powerbi/`) is preserved as engineering history and marked superseded, not deleted; it includes a real, live-debugged record of 9 Desktop bugs found and fixed, with one unresolved report-canvas defect that ended that route (`docs/powerbi/native_report_status.md`). A deterministic `gold/web/` JSON publication layer (`climate-risk build-web`, ADR 0017) sits downstream of `gold/bi/` with a versioned manifest (schema version, provenance, per-file row counts/SHA-256, bundle hash). The React app (Vite + TypeScript + React Router + TanStack Query + Zod-validated contracts + ECharts) implements all 7 canonical routes against real data, with production (`v2_energy`/`empirical_bootstrap_v1`) vs comparison (`v1`) vs research-only (M7 diagnostics) semantics enforced throughout. Live in-browser verification against the real 19-country bundle caught and fixed a real bug (`echarts-for-react` never called `setOption` under echarts v6; replaced with a direct ECharts binding, `web/src/lib/useEcharts.ts`). **Deployed to GitHub Pages** (zero cost, `.github/workflows/deploy-web.yml`): **https://varunrout.github.io/climate-transition-risk-platform/**. 8 real Playwright screenshots (7 routes + one mobile capture) taken directly against that live deployment, chart-paint-aware (not faked, not loading states) — see `docs/web/screenshots/`. **Executive Overview map regression fixed**: the ECharts `map` series (plain equirectangular projection, no antimeridian-aware clipping) drew a long horizontal streak connecting Russia's antimeridian-split geometry, plus a wide band across the bottom from Antarctica's full-longitude-span geometry at extreme southern latitude. Replaced with a static `d3-geo`/`geoPath` SVG renderer (sphere-aware clipping fixes the Russia streak) that also drops Antarctica from the rendered collection (zero analytical relevance for a G20 map) and removes `roam: true` (no more accidental free zoom/pan) in favour of keyboard-focusable/activatable country paths. See ADR 0016, ADR 0017. |
+| M10 | Read-only FastAPI serving layer | **COMPLETE — deployed, healthy, and verified live.** Serves published `gold/web` output (never recomputes analytics), fails to start on an inconsistent bundle, versioned `/api/v1` contracts (Pydantic v2, no bare dicts), production/research semantics enforced in the response models. Root cause of the original CrashLoopBackOff: `gold/bi`/`gold/web` had only ever been published locally — the scheduled Container Apps Job's `run` chain never included the product-publication stage. Fixed with a persistent `climate-risk publish-product` stage invoked by `run()` right after core `publish()` succeeds (never a one-off `--command` override); core analytical publication stays the fail-closed barrier, product-publication failures are reported loudly but never corrupt or roll back a valid core release (ADR 0019). Container images are now built by **GitHub Actions**, not local Docker (`.github/workflows/build-containers.yml`): immutable full-Git-SHA GHCR tags, OCI revision labels, GHA build cache, machine-readable digest artifacts, anonymous-pull verified for both `climate-risk-pipeline` and `climate-risk-api`. Live API: **https://ca-climate-risk-dev-api.ambitiousbush-97a2aedf.uksouth.azurecontainerapps.io** (`/docs`, `/redoc`, `/openapi.json`), scale-to-zero (min replicas 0), `id-climate-risk-api` managed identity with **Storage Blob Data Reader only** (no keys/SAS/connection strings). `/api/v1/meta` exposes `data_git_sha` (the pipeline commit that produced the served bundle) and `api_git_sha`/`api_image_digest` (this API application's own build) as distinct fields, not one overloaded value. Local/Azure response parity verified byte-for-byte except 4/345 backtest rows differing at ~1e-13 relative floating-point precision (cross-platform BLAS/numpy noise, not a data or logic bug). Web dashboard (M9) unmodified and still fully independent. See ADR 0018, ADR 0019, `docs/api/`. |
 | M11 | v1 release (data revision analysis, reproducibility test, evidence bundle, governance/hardening) | Not implemented. The fail-closed `publish` barrier itself is implemented and production-verified (a prerequisite for M11, not M11 itself) — see `docs/adr/`. |
 
 Production container: **implemented, pushed, and running in production**.
@@ -199,15 +199,28 @@ existing source-snapshot/config-hash/git-SHA provenance.
 
 ## Container image
 
+**GitHub Actions is the canonical image builder** (`.github/workflows/build-containers.yml`)
+— triggered on every push to `master` touching `src/**`/`Dockerfile*`/`pyproject.toml`, or
+manually via `gh workflow run build-containers.yml --ref master -f image=all`. Local Docker
+Desktop is never required to produce a production image; the Dockerfiles below remain useful
+for local development/testing only.
+
 ```bash
 docker build -t climate-risk-pipeline:$(git rev-parse --short HEAD) .
 docker run --rm -v /path/to/lake:/data/lake climate-risk-pipeline:latest run
 ```
 
 Multi-stage, non-root, `python:3.12-slim` base, locked production-only deps.
-Public image on GitHub Container Registry:
-`ghcr.io/varunrout/climate-risk-pipeline:95b7fa4` (immutable git-SHA tag,
-anonymous-pull verified; current Azure production tag - see ADR 0010).
+Public images on GitHub Container Registry, built on GitHub-hosted runners with
+immutable full-Git-SHA tags, OCI revision labels, and anonymous-pull verification
+in CI:
+`ghcr.io/varunrout/climate-risk-pipeline:f0bf7f5be79e248591a47d38cb949f17b68f178b`
+(digest `sha256:3b20853de6e85ca5cc67ae698576a3a3a55da4ac762103d8d6be2eac794ccbf9`)
+and `ghcr.io/varunrout/climate-risk-api:f0bf7f5be79e248591a47d38cb949f17b68f178b`
+(digest `sha256:46123ace84ab8661c270873b5746a48872c2336b60ee2e62ddf2e1de1c9e7249`)
+— both the current Azure production tags (see ADR 0010, ADR 0019). Each build also
+uploads a machine-readable `pipeline-image.json`/`api-image.json` artifact
+(`git_sha`, `image`, `digest`) so a deploy step never has to copy text out of logs.
 Storage is backend-neutral
 (`climate_risk.storage`, see ADR 0004) — the same image runs unchanged
 against a local mounted volume or live Azure Data Lake Storage Gen2.
@@ -217,21 +230,28 @@ against a local mounted volume or live Azure Data Lake Storage Gen2.
 `infra/` (Terraform) defines a deliberately minimal, low-cost dev
 environment, **deployed and verified**: one resource group
 (`rg-climate-risk-dev`, `uksouth`), ADLS Gen2 (Standard_LRS, 4 filesystems),
-one Container Apps Environment + one unified Container Apps Job
-(Consumption, scale-to-zero) pulling the public GHCR image above (no
-Azure Container Registry), Log Analytics only (0.1GB/day cap, 30-day
-retention), two least-privilege managed identities (the job's identity
-authenticates to ADLS via `ManagedIdentityCredential` only — no keys/SAS
-anywhere), and a Cost Management budget with 50/80/100% alerts.
+one Container Apps Environment + one unified Container Apps Job pulling the
+pipeline image, plus one scale-to-zero API Container App pulling the API
+image (both public GHCR images above, built by GitHub Actions, no Azure
+Container Registry), Log Analytics only (0.1GB/day cap, 30-day retention),
+three least-privilege managed identities (`id-climate-risk-job`:
+Storage Blob Data Contributor; `id-climate-risk-api`: Storage Blob Data
+Reader *only*; `id-climate-risk-deploy`: scoped Contributor/RBAC-admin for
+CI — each authenticates via `ManagedIdentityCredential`/OIDC only, no
+keys/SAS/connection strings anywhere), and a Cost Management budget with
+50/80/100% alerts.
 
-Three real Container Apps Job executions have run the full pipeline —
-ingestion → silver → backtest → score → publish — end to end against live
-ADLS Gen2 storage, each producing output identical to the local baseline
+The scheduled Container Apps Job runs the full pipeline — ingestion →
+silver → backtest → score → **core publish → product publication
+(`gold/bi` + `gold/web`)** — end to end against live ADLS Gen2 storage
+using its *normal* Terraform-managed template (no per-execution command/
+image/env overrides), producing output identical to the local baseline
 (same `snapshot_set_id`, same backtest metrics, same country scores; see
-ADR 0005, ADR 0006). The published manifest now carries a real `git_sha`
-(baked in at image build time via a `GIT_SHA` Docker build-arg — `.git`
-itself is never copied into the image), alongside the image ref/digest and
-`azure_job_execution_id`.
+ADR 0005, ADR 0006, ADR 0019). The published manifest carries a real
+`git_sha` (baked in at image build time via a `GIT_SHA` Docker build-arg —
+`.git` itself is never copied into the image), alongside the image
+ref/digest and `azure_job_execution_id`; the same `git_sha` is what the
+live API's `/api/v1/meta` exposes as `data_git_sha`.
 
 **Recurring execution is enabled**: `trigger_type = "Schedule"`, weekly,
 **Monday 03:00 UTC** — matches OWID's and World Bank's own weekly/monthly

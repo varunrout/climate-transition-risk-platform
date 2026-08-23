@@ -115,3 +115,28 @@ Container App is expected to recover.
   exit) rather than silently leaving a stale-but-undetected `gold/web`.
 - No new Azure resources, no new schedule, no change to job CPU/memory/
   retry/timeout/identity -- only the container image reference changes.
+
+## Addendum: rollout executed
+
+The rollout above was carried out for real, against the commit tagged
+`f0bf7f5be79e248591a47d38cb949f17b68f178b`:
+
+- Both `climate-risk-pipeline` and `climate-risk-api` images were built by
+  **GitHub Actions** (`.github/workflows/build-containers.yml`), not local
+  Docker -- local Docker Desktop is no longer part of the production image
+  supply chain. Digests: pipeline
+  `sha256:3b20853de6e85ca5cc67ae698576a3a3a55da4ac762103d8d6be2eac794ccbf9`,
+  API `sha256:46123ace84ab8661c270873b5746a48872c2336b60ee2e62ddf2e1de1c9e7249`.
+- Two controlled Terraform promotions (pipeline first, then API, each
+  0 add / 1 change / 0 destroy) -- never simultaneous, since the API can't
+  start until `gold/web` exists.
+- The scheduled job's *normal* template (no overrides) produced
+  `gold/bi` + `gold/web` in Azure, verified via Entra-authenticated reads:
+  `source_run_id`, `source_git_sha` (matching the commit above),
+  `active_score_version=v2_energy`, `active_scenario_method=
+  empirical_bootstrap_v1`, per-file row counts and SHA-256 hashes, and a
+  bundle hash, all present and consistent.
+- The API recovered from `CrashLoopBackOff` to healthy; all documented
+  endpoints return 200 live. `/api/v1/meta` now separates `data_git_sha`
+  (the pipeline commit that produced the bundle) from `api_git_sha`
+  (this API image's own commit) -- see ADR 0018 for why that split matters.
