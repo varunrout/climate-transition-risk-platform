@@ -1009,6 +1009,32 @@ def build_bi(
 
 
 @app.command()
+def build_web() -> None:
+    """Build the browser-safe web publication bundle under gold/web/.
+
+    Downstream of `build-bi`: selects, serializes, and validates the
+    already-published gold/bi/*.parquet tables into JSON. Does not
+    recompute risk scoring, scenario generation, or diagnostics. A failure
+    here does not invalidate an already-published core analytical run --
+    see ADR 0016.
+    """
+    from climate_risk.bi.web_publish import build_manifest, build_web_bundle, write_web_bundle
+
+    log = get_logger(stage="build-web")
+    lake = prepare_lake_from_env(log)
+    bundle = build_web_bundle(lake)
+    manifest = build_manifest(bundle)
+    write_web_bundle(lake, bundle, manifest)
+    log.info(
+        "web publication bundle written",
+        file_count=len(bundle) + 1,
+        country_count=manifest["country_count"],
+        web_bundle_hash=manifest["web_bundle_hash"],
+    )
+    typer.echo("Web publication bundle written under gold/web/")
+
+
+@app.command()
 def export_bi_preview(
     output_path: str = typer.Option(
         "docs/powerbi/portfolio_preview.html",
