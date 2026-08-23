@@ -53,6 +53,17 @@ jobs:
       - name: Smoke test image
         run: docker run --rm climate-risk-pipeline:ci validate-config
 
+  docker-build-api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build API image
+        run: docker build -f Dockerfile.api -t climate-risk-api:ci .
+      # No cloud/Azure integration test here by design (spec: don't add
+      # expensive cloud integration tests to every commit) -- this job only
+      # proves the image builds; startup-validation behaviour is already
+      # covered by tests/integration/test_api.py in the `test` job above.
+
   web-changes:
     runs-on: ubuntu-latest
     outputs:
