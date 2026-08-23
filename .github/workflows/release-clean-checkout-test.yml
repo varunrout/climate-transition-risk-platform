@@ -1,0 +1,96 @@
+name: Release clean-checkout test
+
+# One-off, manually-triggered validation that a specific tagged ref builds
+# and passes all gates from a genuinely fresh clone: clean Ubuntu runner,
+# Python 3.12, uv, `uv sync --frozen` against uv.lock only -- no reused
+# local .venv, no untracked config, nothing from a prior checkout. This is
+# NOT part of ci.yml's push triggers and NEVER runs automatically, so it
+# can validate an already-tagged, immutable release (e.g. v1.0.0) without
+# ever needing to modify that tag.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref to check out and validate (tag, branch, or SHA)
+        required: true
+        default: v1.0.0
+
+jobs:
+  python-clean-checkout:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out ${{ inputs.ref }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Set up Python 3.12
+        run: uv python install 3.12
+
+      - name: Frozen dependency install (uv.lock only)
+        run: uv sync --frozen --all-extras
+
+      - name: Report resolved versions
+        run: |
+          uv --version
+          uv run python --version
+
+      - name: validate-config
+        run: uv run climate-risk validate-config
+
+      - name: Ruff check
+        run: uv run ruff check src tests
+
+      - name: Ruff format check
+        run: uv run ruff format --check src tests
+
+      - name: Type check
+        run: uv run mypy src
+
+      - name: Test
+        run: uv run pytest -q
+
+      - name: Release evidence bundle self-validation
+        run: uv run python scripts/validate_release.py release/v1.0.0/
+        continue-on-error: true # only meaningful when ref actually contains this path
+
+  frontend-clean-checkout:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - name: Check out ${{ inputs.ref }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test
+      - run: npm run build
+
+  terraform-clean-checkout:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
+    steps:
+      - name: Check out ${{ inputs.ref }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform fmt -check -recursive ..
+      - run: terraform -chdir=environments/dev init -backend=false
+      - run: terraform -chdir=environments/dev validate
