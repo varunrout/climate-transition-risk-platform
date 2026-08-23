@@ -55,6 +55,13 @@ src = ["src", "tests"]
 select = ["E", "F", "I", "UP", "B", "SIM", "C4"]
 ignore = ["E501"]
 
+[tool.ruff.lint.per-file-ignores]
+# FastAPI's dependency-injection convention is `param: T = Depends(...)` --
+# a function call in an argument default, which B008 exists to catch as a
+# general Python footgun (shared mutable default) but is the documented,
+# correct pattern here: FastAPI re-resolves Depends() per request.
+"src/climate_risk/api/routes/*.py" = ["B008"]
+
 [tool.mypy]
 python_version = "3.12"
 packages = ["climate_risk"]

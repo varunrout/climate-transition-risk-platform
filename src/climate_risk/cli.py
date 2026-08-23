@@ -1434,6 +1434,30 @@ def run() -> None:
     )
 
 
+@app.command()
+def api(
+    host: str = typer.Option("127.0.0.1", help="Bind host."),
+    port: int = typer.Option(8000, help="Bind port."),
+    reload: bool = typer.Option(False, help="Auto-reload on source changes (development only)."),
+) -> None:
+    """Run the M10 read-only API (requires the `api` extra: `uv sync --extra api`).
+
+    Serves already-published gold/web output; never recomputes analytics.
+    Fails to start if the published bundle is missing or inconsistent.
+    Docs at /docs, /redoc, /openapi.json once running.
+    """
+    try:
+        import uvicorn
+    except ImportError as exc:
+        typer.echo(
+            "The API requires the 'api' extra: run `uv sync --extra api`.",
+            err=True,
+        )
+        raise typer.Exit(code=1) from exc
+
+    uvicorn.run("climate_risk.api.app:app", host=host, port=port, reload=reload)
+
+
 def _not_implemented(command: str, *, milestone: str) -> None:
     typer.echo(
         f"'{command}' is not implemented yet (tracked under {milestone}). "

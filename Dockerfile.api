@@ -1,0 +1,57 @@
+# Dedicated image for the M10 read-only API (Azure Container Apps, HTTP
+# ingress, scale-to-zero). Kept separate from the batch pipeline image
+# (Dockerfile) rather than overloading it: different entrypoint (uvicorn,
+# not the CLI), different runtime shape (long-lived HTTP server vs a
+# one-shot job command), and no reason for the API image to grow every
+# time a batch-only dependency is added, or vice versa.
+
+FROM python:3.12-slim AS builder
+
+RUN pip install --no-cache-dir uv==0.12.5
+
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv
+
+WORKDIR /build
+COPY pyproject.toml uv.lock README.md ./
+COPY src ./src
+
+# --extra api: pulls in fastapi/uvicorn on top of the core deps this
+# package already needs (pandas, pydantic, the storage abstraction, etc).
+# --no-dev: no ruff/mypy/pytest in the runtime image. --frozen: fail
+# rather than silently re-resolve if uv.lock is stale.
+RUN uv sync --frozen --no-dev --no-editable --extra api
+
+FROM python:3.12-slim AS runtime
+
+ARG GIT_SHA=""
+LABEL org.opencontainers.image.revision=${GIT_SHA}
+LABEL org.opencontainers.image.title="climate-risk-api"
+LABEL org.opencontainers.image.description="Read-only serving API for the Climate Transition Risk Intelligence platform (M10)."
+
+RUN groupadd --gid 1000 climaterisk \
+    && useradd --uid 1000 --gid climaterisk --shell /bin/bash --create-home climaterisk
+
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    CLIMATE_RISK_CONFIG_DIR=/app/config \
+    CLIMATE_RISK_LAKE_ROOT=/data/lake \
+    CLIMATE_RISK_GIT_SHA=${GIT_SHA}
+
+WORKDIR /app
+COPY --chown=climaterisk:climaterisk config ./config
+
+# Read-only service: no writable /data/lake volume is mounted or expected
+# in this image (unlike the pipeline image). Local/dev runs against a
+# bind-mounted gold/web still work via CLIMATE_RISK_LAKE_ROOT; production
+# reads gold/web straight from ADLS via the existing storage abstraction
+# and a managed identity -- see docs/api/deployment.md.
+RUN mkdir -p /data/lake && chown -R climaterisk:climaterisk /data
+
+USER climaterisk
+EXPOSE 8000
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s \
+    CMD python -c "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/health', timeout=2)" || exit 1
+
+ENTRYPOINT ["uvicorn", "climate_risk.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
