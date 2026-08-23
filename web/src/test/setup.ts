@@ -2,8 +2,9 @@ import '@testing-library/jest-dom/vitest'
 import { configure } from '@testing-library/react'
 
 // Lazy-loaded route chunks (React.lazy/import()) can take longer than the
-// 1000ms default to resolve on a cold test run.
-configure({ asyncUtilTimeout: 5000 })
+// 1000ms default to resolve on a cold test run, especially under heavy
+// concurrent I/O load.
+configure({ asyncUtilTimeout: 10000 })
 
 // jsdom has no ResizeObserver; echarts-for-react uses one to auto-resize
 // the chart container. A no-op stub is enough for tests that only assert

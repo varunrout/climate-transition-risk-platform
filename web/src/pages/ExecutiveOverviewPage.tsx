@@ -59,7 +59,7 @@ export function ExecutiveOverviewPage() {
         <StatCard label="Avg. data confidence" value={Math.round(avgConfidence)} hint="out of 100" />
       </div>
 
-      <Card title="Risk by country" subtitle="Click a country to open its profile. Roam/zoom supported.">
+      <Card title="Risk by country" subtitle="Click a country to open its profile.">
         <Suspense fallback={<LoadingState label="Loading map…" />}>
           <RiskMap countries={rows} />
         </Suspense>

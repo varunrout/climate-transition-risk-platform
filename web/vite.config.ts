@@ -12,5 +12,11 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
     css: true,
+    // The first test per file that cold-boots <App/> pays a one-time lazy
+    // route-chunk compile/import cost that can exceed vitest's 5s default,
+    // especially on a loaded machine -- every later test in the same file
+    // (reusing already-compiled chunks) finishes in well under a second.
+    // Not a runtime regression; just headroom for that one-time cost.
+    testTimeout: 15000,
   },
 })
