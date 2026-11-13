@@ -75,7 +75,7 @@ handling per source.
   component (`energy_component_v2.1`) to the four components already
   present in `v1` (pace, coupling, volatility, forward_downside).
 - **`energy_component_v2.1`** — a 2-signal, redundancy-reduced
-  specification (coal-share trend + clean-power momentum), frozen after a
+  specification (low-carbon electricity share + clean-power momentum), frozen after a
   2000-permutation robustness hardening pass (ADR 0009).
 - **`empirical_bootstrap_v1`** — the production forward-scenario method:
   seeded bootstrap resampling of historical year-over-year changes,
